@@ -1,0 +1,599 @@
+# FoodMonitor Dashboard Design Specification
+
+> **Purpose**: Fully guided spec for ChatGPT to implement two dashboards (Farmer + Government) in a brownfield React/Vite/tRPC project.
+> **Key constraint**: White background + green accent. Non-technical users. No repeated statistics within any single dashboard. Full-width. Progressive disclosure.
+
+---
+
+## 1. Design System
+
+### 1.1 Colour Palette
+
+| Token | Value | Use |
+|---|---|---|
+| `--bg-primary` | `#FFFFFF` | Page background |
+| `--bg-surface` | `#F8FAF9` | Card backgrounds |
+| `--bg-surface-alt` | `#F0F5F2` | Nested/secondary panels |
+| `--green-900` | `#064E3B` | Primary text headings |
+| `--green-700` | `#047857` | Section headers, active tab |
+| `--green-600` | `#059669` | Primary accent, buttons |
+| `--green-500` | `#10B981` | Active states, icons |
+| `--green-100` | `#D1FAE5` | Light tag backgrounds, highlights |
+| `--green-50` | `#ECFDF5` | Banner backgrounds, hover states |
+| `--text-primary` | `#111827` | Body text |
+| `--text-secondary` | `#6B7280` | Captions, labels |
+| `--text-muted` | `#9CA3AF` | Timestamps, footnotes |
+| `--border` | `#E5E7EB` | Card borders |
+| `--border-green` | `#A7F3D0` | Accent borders |
+| `--red-500` | `#EF4444` | Critical/alert |
+| `--amber-500` | `#F59E0B` | Warning/moderate |
+| `--orange-500` | `#F97316` | High stress |
+
+### 1.2 Typography
+
+- **Font**: `Inter` from Google Fonts (fallback: system sans-serif)
+- **H1**: 28px / 700 / `--green-900`
+- **H2**: 18px / 600 / `--green-700` (section headers)
+- **Body**: 14px / 400 / `--text-primary`
+- **Caption**: 12px / 400 / `--text-secondary`
+- **Data values**: 24px / 700 / `font-variant-numeric: tabular-nums`
+
+### 1.3 Component Rules
+
+- **Cards**: `bg: --bg-surface`, `border: 1px solid --border`, `border-radius: 12px`, `padding: 24px`, `box-shadow: 0 1px 3px rgba(0,0,0,0.04)`
+- **Buttons**: `bg: --green-600`, `color: white`, `border-radius: 8px`, `padding: 10px 20px`, `hover: --green-700`
+- **Tabs**: Horizontal pill tabs. Active = `bg: --green-100, color: --green-700, border: 1px solid --border-green`. Inactive = `color: --text-secondary`
+- **Progress bars**: `bg-track: --bg-surface-alt`, fill colour depends on value threshold
+- **Alerts**: Red-tinted card (`bg: #FEF2F2, border: #FECACA`) for critical, amber-tinted for warnings
+
+### 1.4 Layout Rules
+
+- **Full-width**: `width: 100%`, no `max-width` on page container
+- **Content padding**: `padding: 0 32px` (desktop), `padding: 0 16px` (mobile)
+- **Grid**: CSS Grid, `gap: 24px`
+- **Responsive breakpoints**: mobile < 768px (single col), tablet 768-1024px (2 col), desktop > 1024px (3-4 col)
+
+### 1.5 Progressive Disclosure Pattern
+
+> Users see summary first. Click/tap to expand detail. Source data always accessible.
+
+- **Level 0 – Glanceable**: Large numbers, colour-coded status badges, single-sentence summaries
+- **Level 1 – Detail Panel**: Click card -> expand inline or slide-in panel showing breakdown, charts, trend data
+- **Level 2 – Source Provenance**: "Where does this data come from?" link at bottom of every expanded panel -> shows data source, freshness timestamp, confidence score
+
+---
+
+## 2. API Endpoint → Data Map
+
+> Every piece of data shown maps to one of these. No fabrication, no endpoints that don't exist.
+
+### 2.1 TRPC Endpoints (via `trpc.*`)
+
+| Endpoint | Call | Returns |
+|---|---|---|
+| **CFSR Score** | `trpc.risk.getCfsr.useQuery()` | `{ cfsr, riskBand, components: {n1ImportDependency, n2SupplyChainHealth, n3FertilizerAvailability, n4GeopoliticalRisk, n5PriceVolatility}, componentMeta, scoreConfidence, scoreCoverage, delta, computedAt, dataSourcesSummary }` |
+| **CFSR History** | `trpc.risk.getCfsrHistory.useQuery({ days: 30 })` | `{ data: [{cfsr, riskBand, computedAt}], _meta }` |
+| **Fuzzy State** | `trpc.risk.getFuzzyState.useQuery()` | `{ fertilizer, priceTrend, newsVolume, compound, membershipScores, conflicts, computedAt }` |
+| **Dashboard Indices** | `trpc.risk.getDashboardIndices.useQuery()` | `{ data: { retailPriceStress, statePriceDispersion, inputCostStress, globalCommodityStress, newsAttention, dataQuality } }` — each has `{ score, coverage, status, source }` |
+| **Current Prices** | `trpc.prices.getCurrent.useQuery({ item?: "rice" })` | `{ data: [...priceRows], _meta }` — rows have `commodityName, priceMyr, priceUsd, date, state, unit, seriesType` etc. |
+| **Price Trend** | `trpc.prices.getTrend.useQuery({ item: "rice", days: 30 })` | `{ data: [{date, price}], trendPct, _meta }` |
+| **News** | `trpc.news.getLatest.useQuery({ limit: 20 })` | `{ data: [{title, url, source, publishedAt, sentimentScore, insightScore, severity, isAlert, primaryCommodity, implication, sentimentSide}], _meta }` |
+| **AI Analysis** | `trpc.ai.getAnalysis.useQuery({ type: "cfsr_analysis" })` | `{ content, structuredOutput, generatedAt, dataContext }` — types: `cfsr_analysis`, `recommendations`, `gap_analysis` |
+| **Live Data Status** | `trpc.liveData.getStatus.useQuery()` | `{ lastRuns: [{job, success, startedAt, durationMs, rowsWritten, error}], allRecentLogs }` |
+
+### 2.2 Hono REST Endpoints
+
+| Endpoint | Method | Returns |
+|---|---|---|
+| `/api/status` | GET | Job definitions + last run per job |
+| `/api/provenance` | GET | `{ computedAt, dataSources: string[] }` |
+| `/api/health` | GET | `{ status: "ok", time }` |
+
+---
+
+## 3. Farmer Dashboard
+
+> **Audience**: Low-tech farmers. Big text. Simple language. Malay/English labels ok. Actionable: "What should I plant? Is fertilizer expensive?"
+
+### 3.1 Layout (Top to Bottom)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ HEADER BAR (sticky)                                         │
+│  🌱 FoodMonitor Farmer   [Tab: Prices | Input Cost | News | AI]│
+├─────────────────────────────────────────────────────────────┤
+│ HERO BANNER — "Food Risk Level" gauge + 1-sentence summary  │
+├─────────────────────────────────────────────────────────────┤
+│ TAB CONTENT (full width)                                     │
+│                                                              │
+│ [Default: Prices tab]                                        │
+└─────────────────────────────────────────────────────────────┘
+│ FOOTER — data source provenance + last updated               │
+```
+
+### 3.2 Header Bar
+
+- **Logo**: 🌱 icon + "FoodMonitor" + "Farmer" badge in green pill
+- **Tabs**: `Prices` | `Input Cost` | `News` | `AI Advisor` (English-primary; mixed Malay in descriptions/tooltips is fine)
+- **Right side**: Data freshness indicator → call `trpc.liveData.getStatus` → green dot if latest job `success: true` within 24h, amber if >24h, red if failed
+
+### 3.3 Hero Banner (Always Visible Above Tabs)
+
+> **API**: `trpc.risk.getCfsr`
+
+- **Left**: Semicircle gauge showing `cfsr` score (0-100)
+  - 0-33 GREEN "Safe"
+  - 34-66 AMBER "Caution"
+  - 67-100 RED "High Risk"
+- **Right**: One plain-language sentence:
+  - `riskBand === "LOW"` → "Food supply is stable. Good time to plan new crops."
+  - `riskBand === "MODERATE"` → "Some disruptions detected. Monitor input costs."
+  - `riskBand === "HIGH"` / `"CRITICAL"` → "Significant disruptions. Check fertilizer and prices."
+- **Provenance footer**: `computedAt` from response + "Based on {dataSourcesSummary}"
+- **Click to expand**: Shows 5 component scores as simple bar chart → `components.n1ImportDependency` etc.
+
+### 3.4 Tab 1: Prices
+
+> **APIs**: `trpc.prices.getCurrent` + `trpc.prices.getTrend`
+> **No-repeat rule**: Show each commodity once. Price shown here = NOT repeated in Input Cost tab.
+
+#### Level 0 — Price Cards Grid (3 columns desktop, 1 mobile)
+
+For each item returned by `trpc.prices.getCurrent.useQuery()`:
+
+| Element | Source | Display |
+|---|---|---|
+| Commodity name | `commodityName` | Bold, 16px |
+| Current price | `priceMyr` | Large number, `RM X.XX` |
+| Unit | `unitCanonical` | Small text beside price, e.g. "per kg" |
+| Trend arrow | Computed from `trendPct` (call `getTrend` for top 6 items) | ↑ red if >0, ↓ green if <0 |
+| Trend % | `trendPct` from `getTrend` | "+5.2% in 7 days" |
+
+**Which items to show**: Call `trpc.prices.getCurrent.useQuery()` (no item filter) → get top 20 national_median prices. Group into:
+1. **Staples**: rice, wheat, cooking oil, sugar (filter by `commodityName` containing those keywords)
+2. **Vegetables**: kangkung, bayam, tomato, cabbage
+3. **Protein**: chicken, egg, fish
+
+#### Level 1 — Click Card → Expand
+
+- Show 30-day sparkline chart from `trpc.prices.getTrend.useQuery({ item: commodityName, days: 30 })`
+- Show `data` array as line chart
+- Show `trendPct` as summary
+
+#### Level 2 — Source
+
+- Show "Source: PriceCatcher (Data.gov.my)" from `_meta.source`
+- Show "Last updated: {date of latest row}"
+
+### 3.5 Tab 2: Input Cost
+
+> **APIs**: `trpc.risk.getDashboardIndices` (inputCostStress, globalCommodityStress) + `trpc.risk.getFuzzyState` (fertilizer status)
+> **No-repeat rule**: This tab shows STRESS INDICES and FUZZY STATES. Not raw prices (those are in Tab 1).
+
+#### Level 0 — Two Cards Side by Side
+
+**Card A: Input Cost Stress**
+| Element | Source |
+|---|---|
+| Score gauge (0-100) | `dashboardIndices.inputCostStress.score` |
+| Label | "Input Cost Stress" |
+| Status badge | `inputCostStress.status` → "observed" / "derived" / "missing" |
+| Coverage | `inputCostStress.coverage` as percentage |
+| Plain text | Score > 70 → "Fertilizer and fuel costs are very high" / Score 40-70 → "Input costs are elevated" / Score < 40 → "Input costs are normal" |
+
+**Card B: Global Commodity Stress**
+| Element | Source |
+|---|---|
+| Score gauge (0-100) | `dashboardIndices.globalCommodityStress.score` |
+| Label | "Global Food Price Stress" |
+| Plain text | Similar thresholded message |
+
+#### Level 1 — Expand Either Card
+
+**Input Cost expanded**:
+- Show `inputCostStress.source` ("commodity_prices fertilizer/fuel benchmarks")
+- Show fuzzy state for fertilizer: `fuzzyState.fertilizer` → "low" / "medium" / "high" / "very_high"
+- Show fuzzy compound state: `fuzzyState.compound`
+
+**Global Commodity expanded**:
+- Show `globalCommodityStress.source` ("commodity_prices World Bank benchmarks")
+
+#### Level 2 — Source Provenance
+- Data source string from `.source` field
+- `fuzzyState.computedAt` timestamp
+
+### 3.6 Tab 3: News
+
+> **API**: `trpc.news.getLatest.useQuery({ limit: 10, side: "producer" })`
+> **Filter**: `sentimentSide === "producer"` to show farmer-relevant news only
+
+#### Level 0 — News Feed
+
+For each article:
+| Element | Source |
+|---|---|
+| Title | `title` (truncate to 80 chars) |
+| Source name | `source` |
+| Time | `publishedAt` → relative ("2 hours ago") |
+| Alert badge | If `isAlert === true` → red "AMARAN" badge |
+| Severity pill | `severity` → colour coded |
+| Commodity tag | `primaryCommodity` if present |
+
+#### Level 1 — Click Article
+
+- Show `implication` text (full)
+- Show `sentimentScore` as gauge (-1 to +1)
+- Link to original article: `url`
+
+#### Level 2 — Source Metadata
+- `insightScore`, `severity`, `sentimentSide`
+- `_meta.source`
+
+### 3.7 Tab 4: AI Advisor
+
+> **API**: `trpc.ai.getAnalysis.useQuery({ type: "recommendations" })`
+
+#### Level 0
+- Display `content` as rendered Markdown
+- Label: "AI Recommendations — last updated {generatedAt}"
+
+#### Level 1
+- Show `structuredOutput` if available (JSON rendered as cards)
+
+#### Level 2
+- Show `dataContext` — what data went into generating this
+- Show `promptHash` for audit trail
+
+---
+
+## 4. Government Dashboard
+
+> **Audience**: Policy officers, ministry staff. More data-dense but still clean. Tables ok. Trend comparisons needed.
+
+### 4.1 Layout
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ HEADER BAR (sticky full-width)                                    │
+│  🛡️ FoodMonitor Government   CFSR: [72] CRITICAL                  │
+│  [Tab: Overview | Price Intel | Supply Risk | News | AI Analysis] │
+├──────────────────────────────────────────────────────────────────┤
+│ TAB CONTENT (full width, no max-width)                            │
+└──────────────────────────────────────────────────────────────────┘
+│ FOOTER — provenance, data sources, last ingestion status          │
+```
+
+### 4.2 Header Bar
+
+- **Logo**: 🛡️ + "FoodMonitor" + "Government" badge
+- **CFSR Badge**: `trpc.risk.getCfsr` → `cfsr` value + `riskBand` colour pill
+- **Component mini-bar**: 5 tiny numbers inline `N1:{n1} N2:{n2} N3:{n3} N4:{n4} N5:{n5}` from `components`
+- **Data status**: `trpc.liveData.getStatus` → green/amber/red dot
+- Full-width, `position: sticky`
+
+### 4.3 Tab 1: Overview
+
+> **APIs**: `trpc.risk.getCfsr` + `trpc.risk.getCfsrHistory` + `trpc.risk.getDashboardIndices` + `trpc.risk.getFuzzyState`
+> **No-repeat rule**: CFSR shown here only. Dashboard indices shown here. Not repeated in other tabs.
+
+#### Row 1: CFSR Hero (full-width card)
+
+| Element | Source |
+|---|---|
+| CFSR score | `getCfsr().cfsr` |
+| Risk band | `getCfsr().riskBand` |
+| Delta | `getCfsr().delta` → "+2.3 from yesterday" |
+| Confidence | `getCfsr().scoreConfidence` as percentage |
+| Coverage | `getCfsr().scoreCoverage` as percentage |
+| Data sources | `getCfsr().dataSourcesSummary` |
+| Computed at | `getCfsr().computedAt` |
+
+Right side: 30-day trend chart → `trpc.risk.getCfsrHistory.useQuery({ days: 30 })` → line chart of `cfsr` over time
+
+#### Row 2: Component Breakdown (5 columns)
+
+For each component in `getCfsr().components`:
+
+| Component | Field | Label |
+|---|---|---|
+| N1 | `n1ImportDependency` | Import Dependency |
+| N2 | `n2SupplyChainHealth` | Supply Chain |
+| N3 | `n3FertilizerAvailability` | Fertilizer |
+| N4 | `n4GeopoliticalRisk` | Geopolitical |
+| N5 | `n5PriceVolatility` | Price Volatility |
+
+Each as vertical bar or circular progress with colour thresholds:
+- 0-30 green, 31-50 amber, 51-70 orange, 71-100 red
+
+Expand → show `componentMeta[componentKey]` if available
+
+#### Row 3: Dashboard Indices (6 cards, 3×2 grid)
+
+> **API**: `trpc.risk.getDashboardIndices`
+
+| Index | Field | Label |
+|---|---|---|
+| Retail Price Stress | `retailPriceStress` | "Are retail prices abnormally high?" |
+| State Price Dispersion | `statePriceDispersion` | "How much do prices vary between states?" |
+| Input Cost Stress | `inputCostStress` | "Are fertilizer/fuel costs elevated?" |
+| Global Commodity Stress | `globalCommodityStress` | "Are world market prices elevated?" |
+| News Attention | `newsAttention` | "How much crisis-related news coverage?" |
+| Data Quality | `dataQuality` | "How fresh and complete is our data?" |
+
+Each card shows:
+- `score` (0-100) as circular gauge
+- `coverage` as progress bar
+- `status` badge: "observed" (green) / "derived" (amber) / "missing" (red)
+- `source` string as small text
+- `latestCanonicalDate` for dataQuality card
+
+#### Row 4: Fuzzy State Summary (single card)
+
+> **API**: `trpc.risk.getFuzzyState`
+
+| Element | Source |
+|---|---|
+| Fertilizer State | `fertilizer` ("low"/"medium"/"high"/"very_high") |
+| Price Trend State | `priceTrend` ("falling"/"stable"/"rising"/"surging") |
+| News Volume State | `newsVolume` ("quiet"/"normal"/"elevated"/"high") |
+| Compound State | `compound` overall label |
+| Conflicts | `conflicts` JSON array → list detected conflicts |
+| Membership Scores | `membershipScores` → expandable detail |
+
+### 4.4 Tab 2: Price Intelligence
+
+> **APIs**: `trpc.prices.getCurrent` + `trpc.prices.getTrend`
+> **No-repeat rule**: Raw price data lives HERE. Dashboard indices (summary stress scores) live in Overview tab only.
+
+#### Section A: Current National Median Prices (Table)
+
+Call `trpc.prices.getCurrent.useQuery()` → filter `seriesType === 'national_median'`
+
+| Column | Source |
+|---|---|
+| Commodity | `commodityName` |
+| Price (RM) | `priceMyr` |
+| Price (USD) | `priceUsd` (if World Bank row) |
+| Unit | `unitCanonical` |
+| Date | `date` |
+| Source | `sourceId` ("pricecatcher" or "worldbank_rtfp") |
+
+Sortable by any column. Searchable by commodity name.
+
+#### Section B: Price Trend Explorer
+
+- Dropdown/search to pick commodity name
+- Call `trpc.prices.getTrend.useQuery({ item: selectedCommodity, days: 30 })`
+- Show line chart + `trendPct` value
+- Below chart: "Source: {_meta.source}, series: {_meta.series ?? 'national_median'}"
+
+#### Section C: World Bank Commodity Prices
+
+Call `trpc.prices.getCurrent.useQuery()` → rows where data includes `displayName, category, subcategory, priceUsd`
+
+| Column | Source |
+|---|---|
+| Commodity | `displayName` |
+| Category | `category` / `subcategory` |
+| Price (USD) | `priceUsd` |
+| Unit | `unit` |
+| Source URL | `sourceUrl` (clickable) |
+| Workbook Updated | `workbookUpdatedAt` |
+
+### 4.5 Tab 3: Supply Risk
+
+> **APIs**: `trpc.risk.getCfsr` (components only — N1, N2, N3, N4) + `trpc.risk.getFuzzyState` (conflicts)
+> **No-repeat rule**: This tab shows supply-chain NARRATIVE and CONFLICTS. Component SCORES shown in Overview, not repeated here as numbers — only referenced contextually.
+
+#### Section A: Risk Narrative
+
+Call `trpc.ai.getAnalysis.useQuery({ type: "cfsr_analysis" })`
+- Render `content` as Markdown
+- Label: "AI-Generated Supply Risk Assessment"
+- Show `generatedAt`
+
+#### Section B: Fuzzy Logic Conflicts
+
+From `trpc.risk.getFuzzyState` → `conflicts` array
+- Each conflict as an alert card
+- Show `membershipScores` breakdown
+
+#### Section C: Data Pipeline Health
+
+Call `trpc.liveData.getStatus`
+- Table of recent ingestion runs
+- Columns: Job name, Status (success/fail), Started, Duration, Rows Written, Error
+- Colour-code: green rows = success, red = fail
+
+### 4.6 Tab 4: News & Alerts
+
+> **API**: `trpc.news.getLatest.useQuery({ limit: 50 })`
+> **No-repeat rule**: News data shown HERE only. Not duplicated in other tabs.
+
+#### Level 0: Alert Ribbon
+
+Filter articles where `isAlert === true` → horizontal scrolling ribbon at top
+Each alert: severity badge + title + commodity tag
+
+#### Level 0: Summary Stats (4 cards)
+
+Computed from news response:
+| Card | Computation |
+|---|---|
+| Total Articles | `data.length` |
+| Alerts Count | `data.filter(a => a.isAlert).length` |
+| Avg Sentiment | `mean(data.map(a => a.sentimentScore))` |
+| Top Commodity | `mode(data.map(a => a.primaryCommodity))` |
+
+#### Level 1: News Table (sortable, filterable)
+
+| Column | Source |
+|---|---|
+| Title | `title` (clickable → `url`) |
+| Source | `source` |
+| Published | `publishedAt` |
+| Severity | `severity` (colour pill) |
+| Sentiment | `sentimentScore` (colour bar) |
+| Side | `sentimentSide` |
+| Commodity | `primaryCommodity` |
+| Insight Score | `insightScore` |
+| Alert? | `isAlert` (boolean icon) |
+
+Filters: dropdown for `severity`, `sentimentSide`, `primaryCommodity`
+
+#### Level 2: Click Row → Detail
+
+- Full `implication` text
+- If reasoning metadata available: `matchedKeywords`, `foodSecurityRelevance`, `eventType`, `sourceAuthority`, `analysisConfidence`
+
+### 4.7 Tab 5: AI Analysis
+
+> **APIs**: `trpc.ai.getAnalysis` (3 different types)
+> **No-repeat rule**: AI analysis shown HERE only.
+
+#### Three expandable sections:
+
+**Section A: CFSR Analysis**
+- `trpc.ai.getAnalysis.useQuery({ type: "cfsr_analysis" })`
+- Rendered Markdown
+- Metadata: `generatedAt`, `dataContext`
+
+**Section B: Recommendations**
+- `trpc.ai.getAnalysis.useQuery({ type: "recommendations" })`
+- Rendered Markdown
+- Metadata: same
+
+**Section C: Gap Analysis**
+- `trpc.ai.getAnalysis.useQuery({ type: "gap_analysis" })`
+- Rendered Markdown
+- Metadata: same
+
+---
+
+## 5. No-Repeat Data Matrix
+
+> Critical: Each piece of data appears in EXACTLY ONE location per dashboard.
+
+### Farmer Dashboard
+
+| Data | Appears In | NOT In |
+|---|---|---|
+| CFSR score + band | Hero Banner | — |
+| Component scores N1-N5 | Hero Banner (expand) | — |
+| Raw commodity prices (RM) | Tab 1: Prices | Tab 2 |
+| Price trend % | Tab 1: Prices (expand) | — |
+| Input cost stress score | Tab 2: Input Cost | Tab 1 |
+| Global commodity stress score | Tab 2: Input Cost | Tab 1 |
+| Fuzzy state (fertilizer) | Tab 2: Input Cost (expand) | — |
+| News articles | Tab 3: News | — |
+| AI recommendations | Tab 4: AI Advisor | — |
+
+### Government Dashboard
+
+| Data | Appears In | NOT In |
+|---|---|---|
+| CFSR score + band + delta | Header + Tab 1: Overview | — |
+| Component scores N1-N5 | Tab 1: Overview Row 2 | Tab 3 (narrative only) |
+| Dashboard indices (6 scores) | Tab 1: Overview Row 3 | — |
+| Fuzzy state | Tab 1: Overview Row 4 | Tab 3 (conflicts only) |
+| Raw prices table | Tab 2: Price Intel | — |
+| Price trends | Tab 2: Price Intel | — |
+| World Bank prices | Tab 2: Price Intel | — |
+| AI cfsr_analysis | Tab 3: Supply Risk narrative | Tab 5 not duplicated |
+| Pipeline health | Tab 3: Supply Risk | — |
+| News articles + alerts | Tab 4: News | — |
+| AI recommendations | Tab 5: AI Analysis | — |
+| AI gap_analysis | Tab 5: AI Analysis | — |
+
+> [!IMPORTANT]
+> Tab 3 (Supply Risk) references component scores CONTEXTUALLY in narrative text but does NOT display them as standalone numbers/gauges — those live in Tab 1 only.
+
+---
+
+## 6. Existing Codebase Context for ChatGPT
+
+> [!WARNING]
+> This is a brownfield project. Files already exist. ChatGPT must MODIFY, not create from scratch.
+
+### 6.1 File Locations
+
+| File | Purpose | Action |
+|---|---|---|
+| `ref/app/client/src/index.css` | Global styles | MODIFY: override dark theme vars → white + green palette |
+| `ref/app/client/src/pages/FarmerDashboard.tsx` | Farmer page (474 lines) | REWRITE from scratch: white+green, use only ✅ endpoints |
+| `ref/app/client/src/pages/GovernmentDashboard.tsx` | Government page (638 lines) | REWRITE from scratch: white+green, use only ✅ endpoints |
+| `ref/app/client/src/pages/DashboardShell.tsx` | Landing/selector page | REWRITE: restyle to white + green |
+| `ref/app/client/src/App.tsx` | Router | NO CHANGE (routes already correct) |
+| `ref/app/client/src/lib/trpc.ts` | tRPC client | NO CHANGE |
+
+### 6.2 Key Differences from Old Dashboards
+
+The old dashboards call endpoints that **don't exist** on the backend:
+- ❌ `trpc.farmer.getOpportunities` — does NOT exist
+- ❌ `trpc.farmer.getRecommendations` — does NOT exist
+- ❌ `trpc.fertilizer.getAvailability` — does NOT exist
+- ❌ `trpc.commodities.getAll` — does NOT exist
+- ❌ `trpc.government.getDashboard` — does NOT exist
+- ❌ `trpc.imports.getDependencyIndex` — does NOT exist
+- ❌ `trpc.supplyChain.getRouteStatus` — does NOT exist
+- ❌ `trpc.ai.analyzeGaps` — does NOT exist
+- ❌ `trpc.ai.getRecommendations` — does NOT exist
+- ❌ `trpc.ai.generateInsight` — does NOT exist
+- ❌ `trpc.risk.getCompositeScore` — does NOT exist
+- ❌ `trpc.risk.getTrend` — does NOT exist
+- ❌ `trpc.news.getAggregated` — does NOT exist
+
+**Only these exist on the backend** (from `src/router/trpc.ts`):
+- ✅ `trpc.risk.getCfsr`
+- ✅ `trpc.risk.getCfsrHistory` (input: `{ days }`)
+- ✅ `trpc.risk.getFuzzyState`
+- ✅ `trpc.risk.getDashboardIndices`
+- ✅ `trpc.prices.getCurrent` (input: `{ item? }`)
+- ✅ `trpc.prices.getTrend` (input: `{ item, days }`)
+- ✅ `trpc.news.getLatest` (input: `{ commodity?, severity?, side?, limit? }`)
+- ✅ `trpc.ai.getAnalysis` (input: `{ type }`) — types: `"cfsr_analysis"`, `"recommendations"`, `"gap_analysis"`
+- ✅ `trpc.liveData.getStatus`
+
+### 6.3 Dependencies Already Installed
+
+- React 18+, wouter (routing), @trpc/react-query, recharts, lucide-react, streamdown
+
+### 6.4 tRPC Client Setup
+
+The actual legacy frontend codebase lives in a **separate repo**. The `ref/app/` directory here is reference only. ChatGPT will be working in the real legacy repo where the tRPC client and `AppRouter` import are already configured and resolving. **Do not modify the tRPC client file or AppRouter import path.**
+
+### 6.5 Component Rewrite Policy
+
+All existing shared components (`PriceTrendChart`, `RiskBadge`, `LiveDataStatus`, `StatCard`, `SectionHeader`, `LiveTicker`, etc.) must be **rewritten from scratch** to match the white+green design system. Do NOT reuse the old dark-themed component code. Build fresh, clean components inline or as new files.
+
+---
+
+## 7. Implementation Order for ChatGPT
+
+1. **Step 1**: Update `index.css` — replace/extend CSS variables for white+green palette
+2. **Step 2**: Update `DashboardShell.tsx` — restyle landing page, keep route links
+3. **Step 3**: Rewrite `FarmerDashboard.tsx` — follow Section 3 spec, use only ✅ endpoints
+4. **Step 4**: Rewrite `GovernmentDashboard.tsx` — follow Section 4 spec, use only ✅ endpoints
+5. **Step 5**: Verify no endpoint is called that isn't in the ✅ list
+6. **Step 6**: Verify no statistic appears twice within any single dashboard
+
+---
+
+## Resolved Design Decisions
+
+| Decision | Answer |
+|---|---|
+| **Language** | English-primary. Mixed Malay in descriptions/tooltips is fine. Tab labels in English. |
+| **Components** | Rewrite all from scratch. No reuse of old dark-themed components. |
+| **AppRouter import** | Ignore. Real legacy codebase is in a separate repo where imports already work. |
+
+## Verification Plan
+
+### Automated
+- `pnpm run build` must pass with no type errors (confirms all tRPC calls match existing router)
+- No references to non-existent endpoints
+
+### Manual
+- Visual check: white background, green accents throughout
+- Tab through both dashboards: verify no stat repeated
+- Test progressive disclosure: click card → detail panel → source provenance

@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1774868358655,
+      "tag": "0000_mute_silhouette",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1774873806635,
+      "tag": "0001_deep_shadowcat",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1776096000000,
+      "tag": "0002_fx_snapshot_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1776091358878,
+      "tag": "0003_supreme_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1776102600000,
+      "tag": "0004_fx_snapshot_quote_columns",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1776264000000,
+      "tag": "0005_foodmonitor_compat",
+      "breakpoints": true
+    }
+  ]
+}
