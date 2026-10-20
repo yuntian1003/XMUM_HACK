@@ -32,6 +32,9 @@ import {
   mapFoodMonitorNewsList,
   mapFoodMonitorRiskDashboard,
   toFoodMonitorTrpcError,
+  getLocalFoodMonitorFallback,
+  getFallbackRiskDashboard,
+  getFallbackNewsList,
 } from "./integrations/foodmonitor";
 
 // ── Shared Zod schemas ────────────────────────────────────────────────────────
@@ -318,6 +321,11 @@ async function callFoodMonitorQuery(path: string, input?: unknown) {
   try {
     return await foodMonitorClient.callTrpcQuery(path, input);
   } catch (error) {
+    const fallback = getLocalFoodMonitorFallback(path, input);
+    if (fallback !== null && fallback !== undefined) {
+      console.warn(`[FoodMonitor] Upstream query "${path}" unavailable (${(error as Error)?.message || error}). Using local fallback dataset.`);
+      return fallback;
+    }
     throw toFoodMonitorTrpcError(error);
   }
 }
@@ -626,7 +634,9 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().min(1).max(1000).default(300) }))
       .query(async ({ input }) => {
         const remote = await getFoodMonitorNews(input.limit);
-        return remote && remote.length > 0 ? remote : getLatestNewsItems(input.limit);
+        if (remote && remote.length > 0) return remote;
+        const local = await getLatestNewsItems(input.limit);
+        return local && local.length > 0 ? local : getFallbackNewsList(input.limit);
       }),
   }),
 
@@ -649,7 +659,9 @@ export const appRouter = router({
       .input(z.object({ limit: z.number().min(1).max(100).default(30) }))
       .query(async ({ input }) => {
         const remote = await getFoodMonitorRiskDashboard(input.limit);
-        return remote ?? getRiskDashboard(input.limit);
+        if (remote) return remote;
+        const local = await getRiskDashboard(input.limit);
+        return local?.current ? local : getFallbackRiskDashboard(input.limit);
       }),
   }),
 
