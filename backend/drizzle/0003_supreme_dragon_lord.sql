@@ -1,0 +1,2 @@
+-- Restored migration placeholder referenced by meta/_journal.json.
+-- The schema state for this step is captured in meta/0003_snapshot.json.

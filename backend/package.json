@@ -1,0 +1,11 @@
+{
+  "name": "rice-pathology-backend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cross-env NODE_ENV=development tsx watch --import ./_core/envPreload.ts ./_core/index.ts",
+    "build": "esbuild ./_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=../dist",
+    "start": "cross-env NODE_ENV=production node ../dist/index.js",
+    "db:push": "drizzle-kit generate --config ./drizzle.config.ts && drizzle-kit migrate --config ./drizzle.config.ts"
+  }
+}
