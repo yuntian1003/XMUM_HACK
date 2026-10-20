@@ -6,6 +6,10 @@ import {
   type InsertUser, type InsertScan, type Scan,
 } from "./drizzle/schema";
 import { ENV } from './_core/env';
+import {
+  getFallbackWorldBankPriceDashboard,
+  getFallbackWorldBankCommodityDashboard,
+} from "./integrations/foodmonitor/fallbackData";
 
 let _db: any = null;
 
@@ -1388,7 +1392,7 @@ export async function getFuelDashboard(days = 30): Promise<DashboardFuelDashboar
 export async function getWorldBankPriceDashboard(months = 24): Promise<DashboardWorldBankPriceDashboard> {
   const db = await getDb();
   if (!db) {
-    return { series: [], lastUpdated: null, source: null };
+    return getFallbackWorldBankPriceDashboard(months);
   }
 
   const safeMonths = Math.max(3, Math.min(60, months));
@@ -1567,13 +1571,13 @@ export async function getWorldBankPriceDashboard(months = 24): Promise<Dashboard
     console.warn("[Database] commodity_prices worldbank benchmark query unavailable:", error);
   }
 
-  return { series: [], lastUpdated: null, source: null };
+  return getFallbackWorldBankPriceDashboard(months);
 }
 
 export async function getWorldBankCommodityDashboard(limit = 500): Promise<DashboardWorldBankCommodityDashboard> {
   const db = await getDb();
   if (!db) {
-    return { commodities: [], source: null };
+    return getFallbackWorldBankCommodityDashboard(limit);
   }
 
   const safeLimit = Math.max(1, Math.min(5000, limit));
@@ -1649,7 +1653,7 @@ export async function getWorldBankCommodityDashboard(limit = 500): Promise<Dashb
     console.warn("[Database] commodity_prices commodity lookup query unavailable:", error);
   }
 
-  return { commodities: [], source: null };
+  return getFallbackWorldBankCommodityDashboard(limit);
 }
 
 export async function getPriceCatcherDashboard(months = 2, limit = 250): Promise<DashboardPriceCatcherDashboard> {
