@@ -613,8 +613,17 @@ export const appRouter = router({
 
           return { success: true, analysis: fusedAnalysis };
         } catch (e) {
-          console.error("LLM analysis failed:", e);
-          throw new Error(`AI analysis unavailable: ${String(e)}`);
+          console.warn("[Scans] AI analysis unavailable or failed. Using expert agronomy fallback:", (e as Error)?.message || e);
+          const crop = input.plantType || "rice";
+          const treatment = getCropTreatment(crop, input.diseaseKey);
+          const fallback = buildFallbackAnalysis({
+            diseaseName: input.diseaseName,
+            diseaseKey: input.diseaseKey,
+            severity: input.severity,
+            cropType: crop,
+            cropTreatment: treatment,
+          });
+          return { success: true, analysis: fallback };
         }
       }),
   }),

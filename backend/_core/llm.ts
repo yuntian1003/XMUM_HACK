@@ -177,9 +177,13 @@ const resolveModel = () => {
   return "gemini-3.1-flash-lite-preview";
 };
 
+const getGeminiApiKey = () => {
+  return process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_GENAI_API_KEY?.trim() || "";
+};
+
 const assertApiKey = () => {
-  if (!process.env.GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
+  if (!getGeminiApiKey()) {
+    throw new Error("GEMINI_API_KEY or GOOGLE_GENAI_API_KEY is not configured");
   }
 };
 
@@ -244,7 +248,7 @@ const toGeminiParts = (content: MessageContent | MessageContent[]): GeminiPart[]
 
 const invokeGemini = async (params: InvokeParams): Promise<InvokeResult> => {
   const model = normalizeGeminiModelId(resolveModel());
-  const apiKey = process.env.GEMINI_API_KEY as string;
+  const apiKey = getGeminiApiKey();
   const maxTokens = params.maxTokens ?? params.max_tokens ?? 2048;
   const normalizedResponseFormat = normalizeResponseFormat({
     responseFormat: params.responseFormat,
