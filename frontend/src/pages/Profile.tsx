@@ -179,7 +179,7 @@ export default function Profile() {
         <CardHeader className="pb-2 pt-4 px-4">
           <CardTitle className="text-base flex items-center gap-2">
             <Info className="w-4 h-4 text-primary" />
-            About FarmGPT
+            About AgriGuard
           </CardTitle>
         </CardHeader>
         <CardContent className="px-4 pb-4 space-y-2">
@@ -201,7 +201,7 @@ export default function Profile() {
           </div>
           <Separator className="my-2" />
           <p className="text-xs text-muted-foreground leading-relaxed">
-            FarmGPT detects diseases across 17 ASEAN crops with 80+ diseases using offline Edge AI. All analysis runs directly in your browser with no internet required.
+            AgriGuard detects diseases across 17 ASEAN crops with 80+ diseases using offline Edge AI. All analysis runs directly in your browser with no internet required.
           </p>
         </CardContent>
       </Card>
