@@ -220,169 +220,224 @@ export default function PortalLanding() {
   );
 
   return (
-    <div className="min-h-screen bg-white text-slate-950">
-      <section
-        className="relative min-h-[calc(100vh-3.5rem)] overflow-hidden bg-cover bg-center px-4 py-10 md:px-8"
-        style={{ backgroundImage: "url('/images/hero-bg.png')" }}
-      >
-        <div className="absolute inset-0 bg-white/82" />
-        <div className="relative z-10 flex min-h-[calc(100vh-8.5rem)] flex-col justify-center">
-          <div className="max-w-4xl">
-            <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-              <Leaf className="h-4 w-4" />
-              FoodMonitor
-            </div>
-            <h1 className="mt-5 max-w-3xl text-4xl font-bold leading-tight text-emerald-950 md:text-6xl">
-              One food intelligence platform, three clear product surfaces.
-            </h1>
-            <p className="mt-5 max-w-2xl text-base leading-7 text-slate-700 md:text-lg">
-              Crop Scanner handles field diagnosis, Farmer Hub turns signals into action, and Government Dashboard keeps policy decisions evidence-led.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
-              <Link
-                href="/scan"
-                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-700"
-              >
-                Open Crop Scanner
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/farmer-hub"
-                className="inline-flex items-center gap-2 rounded-lg border border-transparent hover:border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-              >
-                Open Farmer Hub
-              </Link>
-              <Link
-                href="/government-dashboard"
-                className="inline-flex items-center gap-2 rounded-lg border border-transparent hover:border-emerald-200 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
-              >
-                Open Government Dashboard
-              </Link>
-            </div>
+    <div className="min-h-screen bg-[#edf6f0] text-[#0f2417] pb-16">
+      <div className="w-full max-w-[1550px] mx-auto px-4 md:px-8 py-6 space-y-6">
+        {/* ── Top Breadcrumb & Live Status Bar ── */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-white/90 px-4 py-1.5 text-xs font-bold text-emerald-800 shadow-sm">
+            <Leaf className="h-4 w-4 text-emerald-600" />
+            <span>AgriGuard Unified Food & Crop Intelligence</span>
           </div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200/80 bg-white/90 px-4 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
+            <Activity className="h-4 w-4 text-emerald-600" />
+            <span>Backend Freshness: <strong className="text-emerald-700">{freshness.label}</strong></span>
+          </div>
+        </div>
 
-          <div className="mt-10 grid gap-3 md:grid-cols-3">
-            {signals.map((signal) => {
-              const Icon = signal.icon;
-              return (
-                <div key={signal.label} className="rounded-lg border border-slate-200 bg-white/90 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-                      <Icon className="h-5 w-5 text-emerald-700" />
-                    </div>
-                    <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", signal.badgeClass)}>
-                      {signal.value}
+        {/* ── Long Panoramic Hero Command Center ── */}
+        <section
+          className="relative overflow-hidden rounded-[28px] text-white shadow-md"
+          style={{
+            backgroundImage: "linear-gradient(135deg, rgba(6, 78, 59, 0.94), rgba(4, 120, 87, 0.82)), url('/images/hero-bg.png')",
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <div className="absolute inset-0 bg-emerald-950/30 pointer-events-none" />
+          <div className="relative grid gap-6 p-6 md:p-8 xl:grid-cols-[minmax(0,1.3fr)_minmax(22rem,0.7fr)] items-center">
+            <div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/15 border border-white/20 px-3.5 py-1 text-xs font-extrabold uppercase tracking-[0.2em] text-emerald-100">
+                <Leaf className="h-3.5 w-3.5 text-emerald-300" />
+                Integrated National Ag-Platform
+              </span>
+              <h1 className="mt-4 text-3xl md:text-5xl font-black tracking-tight leading-tight">
+                Protect crops. Maximize yield.<br />
+                <span className="text-emerald-200">
+                  Strengthen Malaysian food security.
+                </span>
+              </h1>
+              <p className="mt-4 text-emerald-50/90 text-sm md:text-base leading-relaxed max-w-3xl">
+                Unified crop disease diagnosis for farmers, live market prices from PriceCatcher, and national food supply risk monitoring in one enterprise decision workspace.
+              </p>
+
+              <div className="mt-7 flex flex-wrap gap-3">
+                <Link
+                  href="/scan"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-bold text-emerald-900 shadow-md hover:bg-emerald-50 transition-all hover:scale-[1.02]"
+                >
+                  <Camera className="h-4 w-4 text-emerald-700" />
+                  Launch Crop Scanner
+                  <ArrowRight className="h-4 w-4 text-emerald-700" />
+                </Link>
+                <Link
+                  href="/farmer-hub"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition-all"
+                >
+                  <Sprout className="h-4 w-4 text-emerald-300" />
+                  Open Farmer Hub
+                </Link>
+                <Link
+                  href="/government-dashboard"
+                  className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition-all"
+                >
+                  <Building2 className="h-4 w-4 text-emerald-300" />
+                  Government Dashboard
+                </Link>
+              </div>
+            </div>
+
+            {/* Right Card: National Risk Radar Barometer */}
+            <div className="rounded-2xl border border-white/20 bg-emerald-950/40 p-5 backdrop-blur shadow-lg">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-200">
+                  National Risk Radar
+                </p>
+                <span className={cn("rounded-full px-3 py-0.5 text-xs font-extrabold", riskBadgeClass(band))}>
+                  {readableBandLabel(cfsr?.riskBand)}
+                </span>
+              </div>
+
+              <div className="flex items-center gap-4 my-2">
+                <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-white/10 border border-white/15">
+                  <div className="text-center">
+                    <span className="text-3xl font-black text-white">
+                      {riskScore === null ? "--" : Math.round(riskScore)}
+                    </span>
+                    <span className="block text-[9px] font-bold uppercase tracking-wider text-emerald-300">
+                      /100 CFSR
                     </span>
                   </div>
-                  <p className="mt-4 text-xs font-bold uppercase tracking-[0.18em] text-slate-500">{signal.label}</p>
-                  <p className="mt-2 text-sm font-semibold text-slate-900">{signal.detail}</p>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-white">Comprehensive Food Security Risk</p>
+                  <p className="text-xs text-emerald-100/80 mt-1 leading-snug">
+                    {cfsr?.computedAt
+                      ? `Refreshed ${toRelativeTime(cfsr.computedAt)}. Supply lines stable.`
+                      : "Aggregating 5 national risk dimensions including import dependency."}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-3 border-t border-white/15 grid grid-cols-2 gap-2 text-xs">
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-emerald-200/80 block text-[10px] font-semibold uppercase">Commodities</span>
+                  <span className="font-bold text-white text-sm">{commodityCount > 0 ? `${commodityCount} tracked` : "18 items"}</span>
+                </div>
+                <div className="rounded-xl bg-white/10 p-2.5">
+                  <span className="text-emerald-200/80 block text-[10px] font-semibold uppercase">Active Notices</span>
+                  <span className="font-bold text-white text-sm">{alertCount > 0 ? `${alertCount} notices` : "Normal status"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Key Operational Signal Strip (Wide Panoramic) ── */}
+        <div className="grid gap-4 sm:grid-cols-3">
+          {signals.map((signal) => {
+            const Icon = signal.icon;
+            return (
+              <div
+                key={signal.label}
+                className="rounded-2xl border border-[#d8e8dd] bg-white p-5 shadow-sm transition-all hover:shadow-md hover:border-emerald-300"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className={cn("rounded-full px-3 py-1 text-xs font-bold", signal.badgeClass)}>
+                    {signal.value}
+                  </span>
+                </div>
+                <p className="mt-4 text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                  {signal.label}
+                </p>
+                <p className="mt-1 text-sm font-semibold text-slate-800 line-clamp-2">
+                  {signal.detail}
+                </p>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* ── Workspaces Section (Expansive Long Bars) ── */}
+        <div className="space-y-4 pt-2">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-emerald-700">Product Ecosystem</p>
+              <h2 className="text-2xl font-black text-slate-900 mt-0.5">Explore AgriGuard Workspaces</h2>
+            </div>
+            <p className="text-xs text-slate-500 max-w-md sm:text-right">
+              Large, dedicated surface bars designed for rapid access to field diagnosis, market intelligence, and government policy.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            {workspaces.map((ws) => {
+              const Icon = ws.icon;
+              return (
+                <div
+                  key={ws.href}
+                  className="rounded-2xl border border-[#d8e8dd] bg-white p-5 md:p-6 shadow-sm hover:shadow-md transition-all hover:border-emerald-300 group"
+                >
+                  <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-5">
+                    {/* Left: Icon, category, title, description, and highlight tags */}
+                    <div className="flex items-start gap-4 xl:max-w-2xl">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-700 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                        <Icon className="h-7 w-7" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="rounded-md bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
+                            {ws.eyebrow}
+                          </span>
+                        </div>
+                        <h3 className="mt-1.5 text-xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                          {ws.title}
+                        </h3>
+                        <p className="mt-1 text-xs md:text-sm text-slate-600 leading-relaxed">
+                          {ws.copy}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5">
+                          {ws.highlights.map((tag) => (
+                            <span key={tag} className="rounded-lg bg-slate-50 border border-slate-200/60 px-2.5 py-0.5 text-[11px] font-semibold text-slate-600">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Middle: Long horizontal status telemetry pill */}
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/80 p-4 xl:w-96 shrink-0">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                        {ws.statusLabel}
+                      </p>
+                      <p className="mt-1 text-sm font-bold text-slate-800">
+                        {ws.statusValue}
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-slate-500 line-clamp-2">
+                        {ws.statusCopy}
+                      </p>
+                    </div>
+
+                    {/* Right: Direct Action CTA */}
+                    <div className="shrink-0 flex items-center">
+                      <Link
+                        href={ws.href}
+                        className="inline-flex w-full xl:w-auto items-center justify-center gap-2 rounded-xl bg-slate-900 group-hover:bg-emerald-600 px-6 py-3.5 text-xs font-bold text-white shadow-sm transition-all hover:scale-[1.02]"
+                      >
+                        {ws.action}
+                        <ArrowRight className="h-4 w-4" />
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               );
             })}
           </div>
         </div>
-      </section>
-
-      <section className="px-4 py-10 md:px-8">
-        <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-xs font-bold uppercase text-emerald-700">Choose Workspace</p>
-            <h2 className="mt-1 text-2xl font-bold text-emerald-950">Start from the product surface you need.</h2>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800">
-            <Activity className="h-4 w-4" />
-            Backend status: {freshness.label}
-          </div>
-        </div>
-        <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr_0.85fr]">
-          {workspaces.map((workspace) => {
-            const Icon = workspace.icon;
-            return (
-              <Link
-                key={workspace.href}
-                href={workspace.href}
-                className={cn(
-                  "group relative block rounded-[24px] p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition-all hover:-translate-y-0.5",
-                  workspace.featured
-                    ? "overflow-hidden bg-gradient-to-br from-emerald-950 via-emerald-900 to-emerald-700 text-white hover:border-emerald-200"
-                    : "border"
-                )}
-              >
-                {workspace.featured && (
-                  <>
-                    <div className="absolute inset-0 bg-[url('/images/hero-bg.png')] bg-cover bg-center opacity-20" />
-                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-950/70 via-emerald-900/60 to-emerald-700/30" />
-                  </>
-                )}
-                <div className="flex h-full flex-col gap-5">
-                  <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
-                    <div className="relative z-10">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-2 rounded-lg px-2 py-1 text-xs font-semibold",
-                          workspace.featured
-                            ? "border border-white/20 bg-white/10 text-white"
-                            : ""
-                        )}
-                      >
-                        <Icon className="h-4 w-4" />
-                        {workspace.eyebrow}
-                      </span>
-                      <h3 className={cn("mt-4 text-xl font-bold", workspace.featured ? "text-white" : "text-slate-950")}>{workspace.title}</h3>
-                      <p className={cn("mt-2 max-w-2xl text-sm leading-6", workspace.featured ? "text-emerald-50/90" : "text-slate-600")}>
-                        {workspace.copy}
-                      </p>
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {workspace.highlights.map((highlight) => (
-                          <span
-                            key={highlight}
-                            className={cn(
-                              "rounded-full px-2.5 py-1 text-xs font-semibold",
-                              workspace.featured ? "bg-white/15 text-white" : "bg-white text-emerald-700 ring-1 ring-emerald-200"
-                            )}
-                          >
-                            {highlight}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <span
-                      className={cn(
-                        "relative z-10 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold",
-                        workspace.featured
-                          ? "bg-white text-emerald-800"
-                          : "bg-white text-emerald-700 ring-1 ring-emerald-200 group-hover:bg-emerald-50 transition-colors duration-300"
-                      )}
-                    >
-                      {workspace.action}
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </div>
-
-                  <div
-                    className={cn(
-                      "relative z-10 mt-auto rounded-2xl border p-4",
-                      workspace.featured
-                        ? "border-white/15 bg-emerald-950/35 backdrop-blur"
-                        : "border-emerald-100 bg-white"
-                    )}
-                  >
-                    <p className={cn("text-xs font-bold uppercase tracking-[0.18em]", workspace.featured ? "text-emerald-100/75" : "text-emerald-700")}>
-                      {workspace.statusLabel}
-                    </p>
-                    <p className={cn("mt-3 text-lg font-semibold leading-6", workspace.featured ? "text-white" : "text-slate-900")}>
-                      {workspace.statusValue}
-                    </p>
-                    <p className={cn("mt-2 text-sm leading-6", workspace.featured ? "text-emerald-50/75" : "text-slate-600")}>
-                      {workspace.statusCopy}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            );
-          })}
-        </div>
-      </section>
+      </div>
     </div>
   );
 }

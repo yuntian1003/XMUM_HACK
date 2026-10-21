@@ -407,15 +407,15 @@ export default function GovernmentDashboard() {
             </span>
             <div>
               <div className="flex flex-wrap items-center gap-2">
-                <p className="text-base font-bold text-emerald-950">FoodMonitor</p>
-                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-700">
-                  Government
+                <p className="text-base font-black text-slate-900">AgriGuard</p>
+                <span className="rounded-lg border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">
+                  National Intelligence
                 </span>
-                <span className={`rounded-lg px-2 py-0.5 text-xs font-bold ${riskBadgeClass(band)}`}>
+                <span className={`rounded-lg px-2.5 py-0.5 text-xs font-bold ${riskBadgeClass(band)}`}>
                   Food Risk: {formatScore(cfsrScore)}/100 - {readableRiskBand(band)}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-slate-500">Last updated: {formatUpdatedLabel(cfsr?.computedAt ?? freshness.startedAt)}</p>
+              <p className="mt-0.5 text-xs text-slate-500">Last updated: {formatUpdatedLabel(cfsr?.computedAt ?? freshness.startedAt)}</p>
             </div>
           </div>
 

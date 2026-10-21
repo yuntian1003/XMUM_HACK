@@ -20,13 +20,13 @@ export default function ScannerFamilyNav({ active }: { active: ScannerFamilySect
           <Link key={item.key} href={item.href}>
             <span
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold transition-colors",
+                "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all shadow-sm",
                 isActive
-                  ? "border-emerald-200 bg-emerald-100 text-emerald-800"
-                  : "border-white/20 bg-white/10 text-white/85 hover:bg-white/15"
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-3.5 w-3.5 text-emerald-600" />
               {item.label}
             </span>
           </Link>
@@ -35,13 +35,13 @@ export default function ScannerFamilyNav({ active }: { active: ScannerFamilySect
 
       <span
         className={cn(
-          "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold",
+          "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition-all shadow-sm",
           active === "result"
-            ? "border-emerald-200 bg-emerald-100 text-emerald-800"
-            : "border-white/20 bg-white/10 text-white/65"
+            ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+            : "border-slate-200 bg-white text-slate-400"
         )}
       >
-        <ClipboardList className="h-4 w-4" />
+        <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
         Result
       </span>
     </div>

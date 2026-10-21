@@ -13,25 +13,25 @@ export function normalizeRiskBand(value: string | null | undefined): RiskBand {
 }
 
 export function riskBadgeClass(band: RiskBand) {
-  if (band === "LOW") return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
-  if (band === "MODERATE") return "bg-amber-100 text-amber-800 ring-1 ring-amber-200";
-  if (band === "HIGH") return "bg-red-100 text-red-700 ring-1 ring-red-200";
+  if (band === "LOW") return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
+  if (band === "MODERATE") return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
+  if (band === "HIGH") return "bg-red-50 text-red-700 ring-1 ring-red-200";
   return "bg-red-600 text-white ring-1 ring-red-700";
 }
 
 export function stateBadgeClass(value: string | null | undefined) {
   const normalized = String(value ?? "").toLowerCase();
   if (normalized.includes("critical") || normalized.includes("high") || normalized.includes("severe")) {
-    return "bg-red-100 text-red-700 ring-1 ring-red-200";
+    return "bg-red-50 text-red-700 ring-1 ring-red-200";
   }
   if (normalized.includes("moderate") || normalized.includes("watch") || normalized.includes("warning") || normalized.includes("fallback")) {
-    return "bg-amber-100 text-amber-800 ring-1 ring-amber-200";
+    return "bg-amber-50 text-amber-700 ring-1 ring-amber-200";
   }
   if (normalized.includes("derived") || normalized.includes("observed")) {
-    return "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200";
+    return "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200";
   }
   if (!normalized) return "bg-slate-100 text-slate-700 ring-1 ring-slate-200";
-  return "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200";
+  return "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200";
 }
 
 export function formatScoreMeta(value: number | null | undefined) {
@@ -75,16 +75,16 @@ export function toRelativeTime(value: number | string | Date) {
 export function sourceBadge(source: string | null | undefined) {
   if (!source) return { label: "No source", className: "bg-slate-100 text-slate-700 ring-1 ring-slate-200" };
   if (source.includes("live") || source.includes("api")) {
-    return { label: source, className: "bg-cyan-100 text-cyan-700 ring-1 ring-cyan-200" };
+    return { label: source, className: "bg-cyan-50 text-cyan-700 ring-1 ring-cyan-200" };
   }
   if (source.includes("fallback")) {
-    return { label: source, className: "bg-amber-100 text-amber-800 ring-1 ring-amber-200" };
+    return { label: source, className: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" };
   }
-  return { label: source, className: "bg-emerald-100 text-emerald-700 ring-1 ring-emerald-200" };
+  return { label: source, className: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" };
 }
 
-export const dashboardShell = "min-h-screen w-full bg-white px-4 py-6 text-slate-900 md:px-8";
-export const dashboardFrame = "w-full bg-white";
-export const farmerFrame = "w-full bg-white";
-export const metricCard = "rounded-lg border border-slate-200 bg-[#F8FAF9] p-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)]";
-export const softPanel = "rounded-lg border border-slate-200 bg-[#F8FAF9] p-4";
+export const dashboardShell = "min-h-screen w-full bg-[#edf6f0] px-4 py-6 text-[#0f2417] md:px-8";
+export const dashboardFrame = "w-full bg-[#edf6f0]";
+export const farmerFrame = "w-full bg-[#edf6f0]";
+export const metricCard = "rounded-xl border border-[#d8e8dd] bg-white p-4 shadow-sm text-[#0f2417]";
+export const softPanel = "rounded-xl border border-[#d8e8dd] bg-white p-4 text-[#0f2417]";
