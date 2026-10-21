@@ -60,7 +60,7 @@ const plantAnalysisInputSchema = z.object({
   treatmentContext: z.string(),
 });
 
-const apiKey = process.env.GEMINI_API_KEY?.trim();
+const apiKey = process.env.GEMINI_API_KEY?.trim() || process.env.GOOGLE_GENAI_API_KEY?.trim();
 const groqApiKey = process.env.GROQ_API_KEY?.trim();
 const groq = groqApiKey ? new Groq({ apiKey: groqApiKey }) : null;
 

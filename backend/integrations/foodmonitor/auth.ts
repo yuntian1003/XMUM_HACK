@@ -28,6 +28,8 @@ export function createCloudRunIdTokenHeaderProvider(config: FoodMonitorConfig): 
     return async () => ({});
   }
 
+  const explicitToken = process.env.GOOGLE_CLOUD_ACCESS_TOKEN?.trim();
+
   const auth = new GoogleAuth();
   let clientPromise: ReturnType<GoogleAuth["getIdTokenClient"]> | null = null;
 
@@ -44,6 +46,9 @@ export function createCloudRunIdTokenHeaderProvider(config: FoodMonitorConfig): 
 
       return { Authorization: authHeader };
     } catch (error) {
+      if (explicitToken) {
+        return { Authorization: `Bearer ${explicitToken}` };
+      }
       throw new FoodMonitorUpstreamError({
         code: "UPSTREAM_AUTH_ERROR",
         message: `Unable to create foodmonitor Cloud Run ID token for ${config.audience}.`,
