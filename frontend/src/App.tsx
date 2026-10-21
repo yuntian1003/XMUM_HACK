@@ -14,6 +14,7 @@ import Profile from "./pages/Profile";
 import PortalLanding from "./pages/PortalLanding";
 import GovernmentDashboard from "./pages/GovernmentDashboard";
 import FarmerHub from "./pages/FarmerHub";
+import FarmDesk from "./pages/FarmDesk";
 
 function Router() {
   return (
@@ -23,6 +24,7 @@ function Router() {
         <Route path="/home" component={Home} />
         <Route path="/government-dashboard" component={GovernmentDashboard} />
         <Route path="/farmer-hub" component={FarmerHub} />
+        <Route path="/farm-desk" component={FarmDesk} />
         <Route path="/scan" component={Scan} />
         <Route path="/result/:id" component={Result} />
         <Route path="/history" component={History} />

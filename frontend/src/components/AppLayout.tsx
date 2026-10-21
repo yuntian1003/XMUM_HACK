@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Camera, BarChart2, Building2, User, Leaf, Wifi, WifiOff, Menu, X, Shield } from "lucide-react";
+import { Home, Camera, BarChart2, Building2, User, Leaf, Wifi, WifiOff, Menu, X, Shield, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
@@ -8,7 +8,7 @@ const BOTTOM_NAV = [
   { href: "/", icon: Home, label: "Portal" },
   { href: "/government-dashboard", icon: Building2, label: "Gov" },
   { href: "/scan", icon: Camera, label: "Scan", primary: true },
-  { href: "/farmer-hub", icon: BarChart2, label: "Farmer" },
+  { href: "/farm-desk", icon: Warehouse, label: "Farm Desk" },
   { href: "/profile", icon: User, label: "Profile" },
 ];
 
@@ -17,6 +17,7 @@ const ALL_NAV = [
   { href: "/scan", icon: Camera, label: "Crop Scanner", tier: "1" },
   { href: "/government-dashboard", icon: Building2, label: "Government", tier: null },
   { href: "/farmer-hub", icon: Leaf, label: "Farmer Hub", tier: "1" },
+  { href: "/farm-desk", icon: Warehouse, label: "Farm Desk", tier: "1" },
   { href: "/profile", icon: User, label: "Profile", tier: null },
 ];
 

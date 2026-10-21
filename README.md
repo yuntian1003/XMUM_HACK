@@ -33,8 +33,11 @@
 | 🪴 **PlantNet Integration** | Species identification powered by the Pl@ntNet API |
 | 📊 **Government Dashboard** | Aggregated disease analytics, food price monitoring, risk indices, and news |
 | 👩‍🌾 **Farmer Hub** | Personalised portal for farmers with scan history and treatment recommendations |
+| 🌾 **Farm Desk Demo** | Synthetic paddy-farm workflow for photo screening, manager treatment review, stock and fertiliser tracking, owner PO approval, WhatsApp order drafts, and an activity log |
 | 💬 **AI Assistant Chat** | Dashboard copilot that answers questions about live agricultural data |
 | 📈 **Food Price Monitoring** | Real-time commodity prices, FX rates, fuel costs, and World Bank data |
+
+> The Farm Desk demo is available at `/farm-desk`. It uses synthetic data and simulated roles/local activity records; it does not place orders or provide authoritative treatment instructions.
 
 ---
 
