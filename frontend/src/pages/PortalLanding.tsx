@@ -277,6 +277,14 @@ export default function PortalLanding() {
                   Open Farmer Hub
                 </Link>
                 <Link
+                  href="/farm-desk"
+                  className="inline-flex items-center gap-2 rounded-xl bg-amber-300 px-5 py-3 text-sm font-bold text-emerald-950 shadow-md transition-all hover:scale-[1.02] hover:bg-amber-200"
+                >
+                  <Sprout className="h-4 w-4" />
+                  Open Farm Desk demo
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+                <Link
                   href="/government-dashboard"
                   className="inline-flex items-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 px-5 py-3 text-sm font-semibold text-white backdrop-blur transition-all"
                 >
