@@ -42,10 +42,15 @@ export function useAuth(options?: UseAuthOptions) {
   }, [logoutMutation, utils]);
 
   const state = useMemo(() => {
-    localStorage.setItem(
-      "user-info",
-      JSON.stringify(meQuery.data)
-    );
+    // Only persist when the query has actually settled — never during loading.
+    // JSON.stringify(undefined) = undefined which localStorage stores as "undefined",
+    // wiping the cache and making every component think the user is logged out.
+    if (!meQuery.isLoading) {
+      localStorage.setItem(
+        "user-info",
+        meQuery.data ? JSON.stringify(meQuery.data) : "null"
+      );
+    }
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,
