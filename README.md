@@ -1,4 +1,4 @@
-# 🌾 FarmGPT — Multi-Plant Edge AI Disease Detection
+# 🌾 AgriGuard — Multi-Plant Edge AI Disease Detection
 
 > AI-powered crop disease scanner for ASEAN agriculture. Detect 80+ diseases across 17 crop types — with Edge AI that works completely offline.
 
@@ -21,7 +21,7 @@
 
 ## Overview
 
-**FarmGPT** is a full-stack web application built for the XMUM Software Development Competition / AI4Sustainability Hackfest. It helps farmers and government agencies detect crop diseases using AI-powered image scanning.
+**AgriGuard** is a full-stack web application built for the XMUM Software Development Competition / AI4Sustainability Hackfest. It helps farmers and government agencies detect crop diseases using AI-powered image scanning.
 
 ### Key Features
 

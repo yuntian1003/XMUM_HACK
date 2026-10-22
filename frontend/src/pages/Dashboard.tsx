@@ -1,3 +1,4 @@
+import { useAuth } from "@/_core/hooks/useAuth";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "wouter";
 import {
@@ -222,11 +223,30 @@ const COMMODITY_TERM_TRANSLATIONS: Array<[string, string]> = [
 ];
 
 export default function Dashboard() {
+  const { user, isAuthenticated } = useAuth();
   const [activeTab, setActiveTab] = useState<FarmerTab>("prices");
   const [expandedCommodity, setExpandedCommodity] = useState<string | null>(null);
   const [latestScan, setLatestScan] = useState<LocalScan | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string>("All");
+
+  // Personalization from localStorage (set on Profile page)
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem("agriguard-display-name") ?? "");
+  const [farmName, setFarmName] = useState(() => localStorage.getItem("agriguard-farm-name") ?? "");
+
+  // Keep in sync when Profile page saves
+  useEffect(() => {
+    const onStorage = () => {
+      setDisplayName(localStorage.getItem("agriguard-display-name") ?? "");
+      setFarmName(localStorage.getItem("agriguard-farm-name") ?? "");
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  const greeting = isAuthenticated
+    ? `Welcome back, ${displayName || user?.name || "Farmer"}!`
+    : "Welcome to AgriGuard!";
 
   const cfsrQuery = trpc.risk.getCfsr.useQuery(undefined, { refetchInterval: 60 * 60_000 });
   const indicesQuery = trpc.risk.getDashboardIndices.useQuery(undefined, { refetchInterval: 60 * 60_000 });
@@ -396,8 +416,14 @@ export default function Dashboard() {
                   AgriGuard Farm Intelligence
                 </span>
                 <h1 className="mt-4 text-3xl font-extrabold tracking-tight md:text-4xl" style={{ fontFamily: "Poppins, sans-serif" }}>
-                  Protect Your Crops. <span style={{ color: "#86efac" }}>Maximize Your Yield.</span>
+                  {greeting} <span style={{ color: "#86efac" }}>Protect Your Crops.</span>
                 </h1>
+                {farmName && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <Sprout className="h-4 w-4 text-emerald-400" />
+                    <span className="text-sm font-semibold text-emerald-300">{farmName}</span>
+                  </div>
+                )}
                 <p className="mt-3 text-sm leading-6 text-slate-300 md:text-base">
                   Instant AI crop diagnosis, daily Malaysian market prices, and predictive food supply risk signals unified into your field workspace.
                 </p>
