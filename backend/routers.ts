@@ -372,13 +372,18 @@ export const appRouter = router({
           password: input.password,
         });
 
-        await upsertUser({
-          openId: user.openId,
-          name: user.name,
-          email: user.email,
-          loginMethod: "local",
-          lastSignedIn: new Date(),
-        });
+        // Best-effort DB sync — a cloud DB failure must NOT block the session cookie.
+        try {
+          await upsertUser({
+            openId: user.openId,
+            name: user.name,
+            email: user.email,
+            loginMethod: "local",
+            lastSignedIn: new Date(),
+          });
+        } catch (dbErr) {
+          console.warn("[Auth/signup] DB sync failed (non-fatal):", (dbErr as Error)?.message ?? dbErr);
+        }
 
         const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name,
@@ -408,13 +413,18 @@ export const appRouter = router({
           throw new Error("Invalid email or password.");
         }
 
-        await upsertUser({
-          openId: user.openId,
-          name: user.name,
-          email: user.email,
-          loginMethod: "local",
-          lastSignedIn: new Date(),
-        });
+        // Best-effort DB sync — a cloud DB failure must NOT block the session cookie.
+        try {
+          await upsertUser({
+            openId: user.openId,
+            name: user.name,
+            email: user.email,
+            loginMethod: "local",
+            lastSignedIn: new Date(),
+          });
+        } catch (dbErr) {
+          console.warn("[Auth/login] DB sync failed (non-fatal):", (dbErr as Error)?.message ?? dbErr);
+        }
 
         const sessionToken = await sdk.createSessionToken(user.openId, {
           name: user.name,
