@@ -2,6 +2,7 @@ import { Link, useLocation } from "wouter";
 import { Home, Camera, BarChart2, Building2, User, Leaf, Wifi, WifiOff, Menu, X, Shield, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 // ── Navigation items per tier ─────────────────────────────────────────────────
 const BOTTOM_NAV = [
@@ -41,6 +42,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, isAuthenticated, loading } = useAuth();
+
+  // Read display name from localStorage (synced from Profile page)
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem("agriguard-display-name") ?? "");
+  useEffect(() => {
+    const onStorage = () => setDisplayName(localStorage.getItem("agriguard-display-name") ?? "");
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
+
+  // Use the cached user-info from localStorage for instant avatar (avoids grey flash while query loads)
+  const cachedUserRaw = localStorage.getItem("user-info");
+  const cachedUser = (() => {
+    try { return cachedUserRaw ? JSON.parse(cachedUserRaw) : null; } catch { return null; }
+  })();
+  const effectiveUser = user ?? cachedUser;
+  const effectiveAuth = isAuthenticated || Boolean(cachedUser?.name);
+
+  const avatarLetter = (displayName || effectiveUser?.name || "F").charAt(0).toUpperCase();
 
   useEffect(() => {
     const up = () => setIsOnline(true);
@@ -120,7 +140,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        {/* Right side — online indicator + mobile menu */}
+        {/* Right side — online indicator + user avatar + mobile menu */}
         <div className="ml-auto flex items-center gap-2">
           <div className={cn(
             "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-semibold transition-all",
@@ -133,6 +153,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               : <><WifiOff className="w-3 h-3" /><span className="hidden sm:inline">Offline</span></>
             }
           </div>
+          {/* User avatar — shows initials when logged in, hidden while loading to avoid grey flash */}
+          {!loading && (
+            <Link href="/profile">
+              <div
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-transform hover:scale-105 active:scale-95 shrink-0"
+                title={effectiveAuth ? (displayName || effectiveUser?.name || "Profile") : "Sign In"}
+                style={effectiveAuth ? {
+                  background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                  boxShadow: "0 0 10px rgba(34,197,94,0.35)",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  color: "white",
+                } : {
+                  background: "rgba(255,255,255,0.08)",
+                  border: "1px solid rgba(255,255,255,0.15)",
+                }}
+              >
+                {effectiveAuth
+                  ? <span>{avatarLetter}</span>
+                  : <User className="w-4 h-4 text-white/50" />
+                }
+              </div>
+            </Link>
+          )}
+          {loading && (
+            <div className="w-8 h-8 rounded-full bg-white/10 animate-pulse shrink-0" />
+          )}
           {/* Mobile hamburger */}
           <button
             className="md:hidden p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors"
