@@ -9,9 +9,12 @@ import {
   ClipboardCheck,
   Copy,
   Leaf,
+  Loader2,
+  Lock,
   MessageCircle,
   Package,
   RotateCcw,
+  Send,
   ShieldCheck,
   ShoppingCart,
   Sprout,
@@ -29,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import { detectDiseaseForPlant } from "@/lib/multiPlantDetector";
+import { useAuth } from "@/_core/hooks/useAuth";
 
 type Role = "Worker" | "Manager" | "Owner";
 type ReviewStatus = "not-started" | "needs-review" | "approved" | "rejected";
@@ -182,7 +186,28 @@ export default function FarmDesk() {
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [isClassifying, setIsClassifying] = useState(false);
   const [stockEdits, setStockEdits] = useState<Record<string, string>>({});
+  // Auth — the logged-in user's openId doubles as the farmId for Telegram routing
+  const { user, isAuthenticated } = useAuth();
+  const farmId = user?.openId ?? null;
+  // Telegram PO send state
+  const [telegramPoId, setTelegramPoId] = useState<string | null>(null);
+  const [telegramStatus, setTelegramStatus] = useState<"idle" | "sending" | "sent" | "approved" | "rejected">("idle");
+  const [telegramDecidedAt, setTelegramDecidedAt] = useState<string | null>(null);
+  // Telegram link state (for Owner role)
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [linkCodeCopied, setLinkCodeCopied] = useState(false);
   const analyzeMutation = trpc.scans.analyze.useMutation();
+  const sendPoMutation = trpc.farmDesk.sendPO.useMutation();
+  // protectedProcedures — only work when user is logged in
+  const generateLinkCodeMutation = trpc.farmDesk.generateLinkCode.useMutation();
+  const unlinkMutation = trpc.farmDesk.unlinkTelegram.useMutation();
+  const linkStatusQuery = trpc.farmDesk.getLinkStatus.useQuery(
+    undefined,
+    {
+      enabled: isAuthenticated && role === "Owner",
+      refetchInterval: linkCode ? 2000 : false,
+    }
+  );
 
   useEffect(() => {
     try {
@@ -214,6 +239,47 @@ export default function FarmDesk() {
   const canReviewTreatment = role === "Manager";
   const canApproveOrder = role === "Owner";
   const canEditStock = role !== "Worker";
+
+  // ── Telegram polling ────────────────────────────────────────────────────────
+  const pollStatusQuery = trpc.farmDesk.pollStatus.useQuery(
+    { poId: telegramPoId ?? "" },
+    { enabled: !!telegramPoId && telegramStatus === "sent", refetchInterval: 3000 }
+  );
+
+  useEffect(() => {
+    if (!pollStatusQuery.data) return;
+    const { status, decidedAt } = pollStatusQuery.data;
+    if (status === "approved" || status === "rejected") {
+      setTelegramStatus(status);
+      setTelegramDecidedAt(decidedAt ?? null);
+      // Reflect in the main desk state so UI buttons also update
+      setDesk((current) => ({
+        ...current,
+        orderStatus: status,
+        activity: [
+          createActivity(
+            "Owner" as Role,
+            status === "approved" ? "Purchase order approved via Telegram" : "Purchase order rejected via Telegram",
+            status === "approved"
+              ? `Owner approved the PO draft on Telegram at ${decidedAt}. No order was sent; confirm with supplier to proceed.`
+              : `Owner rejected the PO draft on Telegram at ${decidedAt}. No order will be placed.`
+          ),
+          ...current.activity,
+        ],
+      }));
+      toast[status === "approved" ? "success" : "error"](
+        status === "approved" ? "✅ Owner approved the PO on Telegram!" : "❌ Owner rejected the PO on Telegram."
+      );
+    }
+  }, [pollStatusQuery.data]);  // ── Auto-clear link code once linking is confirmed ──────────────────────────
+  useEffect(() => {
+    if (linkStatusQuery.data?.linked && linkCode) {
+      setLinkCode(null);
+      toast.success("✅ Telegram linked! You can now receive PO approvals.");
+    }
+  }, [linkStatusQuery.data?.linked, linkCode]);
+
+
 
   const handleImage = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] ?? null;
@@ -376,6 +442,50 @@ export default function FarmDesk() {
         ...current.activity,
       ],
     }));
+  };
+
+  const sendPOToTelegram = async () => {
+    if (!farmId) {
+      toast.error("You must be logged in to send a PO.");
+      return;
+    }
+    if (shortages.length === 0) {
+      toast.error("No stock shortages to send.");
+      return;
+    }
+    if (!linkStatusQuery.data?.linked) {
+      toast.error("The Owner must link their Telegram first (switch to Owner role).");
+      return;
+    }
+    setTelegramStatus("sending");
+    try {
+      const poId = `PO-${Date.now()}`;
+      await sendPoMutation.mutateAsync({
+        poId,
+        farmId,
+        items: shortages.map((item) => ({
+          name: item.name,
+          qty: shortageFor(item),
+          unit: item.unit,
+          unitPrice: item.unitPrice,
+        })),
+      });
+      setTelegramPoId(poId);
+      setTelegramStatus("sent");
+      setTelegramDecidedAt(null);
+      setDesk((current) => ({
+        ...current,
+        activity: [
+          createActivity(role, "PO sent to Telegram", `Draft PO ${poId} dispatched to Owner on Telegram for approval.`),
+          ...current.activity,
+        ],
+      }));
+      toast.success("📨 PO draft sent to owner's Telegram!");
+    } catch (err) {
+      setTelegramStatus("idle");
+      toast.error("Failed to send PO to Telegram. Check bot configuration.");
+      console.error("Telegram sendPO error:", err);
+    }
   };
 
   const updateStock = (item: SupplyItem) => {
@@ -660,7 +770,46 @@ export default function FarmDesk() {
                               </div>
                             </div>
                           ) : (
-                            <p className="rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-900">Awaiting Owner approval. Switch to Owner to approve or reject the draft.</p>
+                            <div className="space-y-3">
+                              <p className="rounded-lg bg-amber-50 p-3 text-sm font-medium text-amber-900">Awaiting Owner approval. Switch to Owner to approve or reject the draft.</p>
+                              {/* ── Telegram PO Panel ───────────────────────────────────── */}
+                              {telegramStatus === "idle" && (
+                                <div className="rounded-xl border border-sky-100 bg-sky-50 p-4 space-y-3">
+                                  <p className="text-sm font-semibold text-sky-900">📱 Send PO to Owner via Telegram</p>
+                                  <p className="text-xs text-sky-700">The owner will receive an interactive Telegram message with ✅ Approve and ❌ Reject buttons. The Farm Desk will update automatically when a decision is made.</p>
+                                  <Button
+                                    size="sm"
+                                    className="bg-sky-600 hover:bg-sky-700 text-white gap-2"
+                                    onClick={sendPOToTelegram}
+                                  >
+                                    <Send className="h-4 w-4" /> Send PO to Telegram
+                                  </Button>
+                                </div>
+                              )}
+                              {telegramStatus === "sending" && (
+                                <div className="flex items-center gap-2 rounded-xl border border-sky-100 bg-sky-50 p-4 text-sm text-sky-700">
+                                  <Loader2 className="h-4 w-4 animate-spin" /> Sending PO to Telegram…
+                                </div>
+                              )}
+                              {telegramStatus === "sent" && (
+                                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 space-y-1">
+                                  <p className="text-sm font-semibold text-emerald-900">📨 PO sent — awaiting owner decision on Telegram</p>
+                                  <p className="text-xs text-emerald-700 flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Polling for response every 3 seconds…</p>
+                                </div>
+                              )}
+                              {telegramStatus === "approved" && (
+                                <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-1">
+                                  <p className="text-sm font-bold text-emerald-800">✅ Owner approved the PO on Telegram</p>
+                                  {telegramDecidedAt && <p className="text-xs text-emerald-600">Decided at {telegramDecidedAt}</p>}
+                                </div>
+                              )}
+                              {telegramStatus === "rejected" && (
+                                <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-1">
+                                  <p className="text-sm font-bold text-rose-800">❌ Owner rejected the PO on Telegram</p>
+                                  {telegramDecidedAt && <p className="text-xs text-rose-600">Decided at {telegramDecidedAt}</p>}
+                                </div>
+                              )}
+                            </div>
                           )
                         ) : (
                           <p className={`rounded-lg p-3 text-sm font-bold ${desk.orderStatus === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
@@ -704,6 +853,106 @@ export default function FarmDesk() {
                   <RoleRow roleName="Owner" active={role === "Owner"} detail="Approve or reject supplier PO draft" />
                 </CardContent>
               </Card>
+
+              {/* ── Owner Telegram Linking Card ─────────────────────────────── */}
+              {role === "Owner" && (
+                <Card className="border-sky-100 shadow-sm">
+                  <CardContent className="space-y-4 p-5">
+                    <SectionHeading
+                      icon={Send}
+                      title="Link Owner Telegram"
+                      subtitle="Link your Telegram account so you can approve or reject PO drafts directly from Telegram."
+                    />
+                    {!isAuthenticated ? (
+                      /* ── Not logged in ── */
+                      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                        <Lock className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+                        <div>
+                          <p className="text-sm font-semibold text-amber-900">Login required</p>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Only registered AgriGuard accounts can link Telegram. Please{" "}
+                            <a href="/profile" className="underline font-medium">sign in or create an account</a>{" "}
+                            first.
+                          </p>
+                        </div>
+                      </div>
+                    ) : linkStatusQuery.data?.linked && !linkCode ? (
+                      /* ── Already linked ── */
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm font-semibold text-emerald-800">
+                          <CheckCircle2 className="h-4 w-4 shrink-0" />
+                          Telegram linked! PO drafts will be sent to your Telegram for approval.
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-rose-600 border-rose-200 hover:bg-rose-50"
+                          onClick={async () => {
+                            await unlinkMutation.mutateAsync();
+                            setTelegramStatus("idle");
+                            setTelegramPoId(null);
+                            toast.success("Telegram unlinked. You can link a different account.");
+                          }}
+                        >
+                          <X className="h-3.5 w-3.5 mr-1" /> Unlink Telegram
+                        </Button>
+                      </div>
+                    ) : linkCode ? (
+                      /* ── Code shown, waiting for user to send /link ── */
+                      <div className="space-y-3">
+                        <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 space-y-2">
+                          <p className="text-sm font-semibold text-sky-900">Step 1 — Open <strong>@AgriGuard_Farm_bot</strong> on Telegram</p>
+                          <p className="text-sm font-semibold text-sky-900">Step 2 — Send this command:</p>
+                          <div className="flex items-center gap-2">
+                            <code className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-lg font-bold tracking-widest text-emerald-300 text-center">
+                              /link {linkCode}
+                            </code>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(`/link ${linkCode}`);
+                                setLinkCodeCopied(true);
+                                setTimeout(() => setLinkCodeCopied(false), 2000);
+                              }}
+                            >
+                              {linkCodeCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
+                            </Button>
+                          </div>
+                          <p className="text-xs text-sky-600 flex items-center gap-1">
+                            <Loader2 className="h-3 w-3 animate-spin" /> Waiting for you to send the command…
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            💡 This code is permanent — it will always be the same for your account.
+                          </p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => setLinkCode(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      /* ── Not yet linked ── */
+                      <div className="space-y-3">
+                        <p className="text-sm text-slate-600">
+                          Generate your personal link code, then send it to <strong>@AgriGuard_Farm_bot</strong> on Telegram.
+                          Your code is always the same — <em>one account, one code</em>.
+                        </p>
+                        <Button
+                          size="sm"
+                          className="bg-sky-600 hover:bg-sky-700 text-white gap-2"
+                          onClick={async () => {
+                            const result = await generateLinkCodeMutation.mutateAsync();
+                            setLinkCode(result.code);
+                          }}
+                          disabled={generateLinkCodeMutation.isPending}
+                        >
+                          {generateLinkCodeMutation.isPending
+                            ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating…</>
+                            : <><Send className="h-4 w-4" /> Get My Link Code</>}
+                        </Button>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
         )}

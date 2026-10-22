@@ -23,6 +23,14 @@ import {
   runDashboardAssistantChat,
 } from "./assistantChat";
 import {
+  sendPOToTelegram,
+  getPOStatus,
+  getOrCreateLinkCode,
+  isFarmLinked,
+  unlinkFarm,
+  type POItem,
+} from "./telegram";
+import {
   FoodMonitorAiFlowNameSchema,
   FoodMonitorJobNameSchema,
   FoodMonitorJobParamsSchema,
@@ -786,6 +794,63 @@ export const appRouter = router({
           callFoodMonitorRest(() => foodMonitorClient.runAiFlow(input.flow, input.input ?? {}))
         ),
     }),
+  }),
+
+  // ── Farm Desk Telegram PO approval (multi-owner, auth-gated linking) ────────────
+  farmDesk: router({
+    // Generate the deterministic link code for the logged-in user.
+    // Requires authentication — unauthenticated users get UNAUTHORIZED.
+    // The code is always the same for the same user (derived from openId).
+    generateLinkCode: protectedProcedure
+      .mutation(({ ctx }) => {
+        const code = getOrCreateLinkCode(ctx.user.openId);
+        return { code, farmId: ctx.user.openId };
+      }),
+
+    // Check whether the current logged-in user has a linked Telegram.
+    getLinkStatus: protectedProcedure
+      .query(({ ctx }) => ({
+        linked: isFarmLinked(ctx.user.openId),
+        farmId: ctx.user.openId,
+      })),
+
+    // Unlink (owner can re-link a different Telegram account).
+    unlinkTelegram: protectedProcedure
+      .mutation(({ ctx }) => {
+        unlinkFarm(ctx.user.openId);
+        return { ok: true };
+      }),
+
+    // Send the PO draft — farmId identifies whose linked Telegram to use.
+    sendPO: publicProcedure
+      .input(
+        z.object({
+          poId: z.string(),
+          farmId: z.string(),
+          items: z.array(
+            z.object({
+              name: z.string(),
+              qty: z.number(),
+              unit: z.string(),
+              unitPrice: z.number(),
+            })
+          ),
+        })
+      )
+      .mutation(async ({ input }) => {
+        return sendPOToTelegram(input.poId, input.items as POItem[], input.farmId);
+      }),
+
+    // Poll for the owner's approve/reject decision.
+    pollStatus: publicProcedure
+      .input(z.object({ poId: z.string() }))
+      .query(({ input }) => {
+        const record = getPOStatus(input.poId);
+        return {
+          status: record?.status ?? null,
+          decidedAt: record?.decidedAt ?? null,
+        };
+      }),
   }),
 });
 

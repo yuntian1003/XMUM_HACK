@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { handleTelegramCallback, startTelegramPoller } from "../telegram";
 
 const DEFAULT_CORS_ALLOWED_ORIGINS = [
   "http://localhost:5173",
@@ -78,6 +79,16 @@ async function startServer() {
   // Configure body parser with larger size limit for file uploads
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
+  // Telegram webhook — receives approve/reject button taps from the owner
+  app.post("/api/telegram-webhook", async (req, res) => {
+    try {
+      await handleTelegramCallback(req.body);
+    } catch (err) {
+      console.error("[Telegram webhook] Error handling callback:", err);
+    }
+    res.sendStatus(200); // always 200 or Telegram will retry
+  });
+
   // tRPC API
   app.use(
     "/api/trpc",
@@ -102,6 +113,7 @@ async function startServer() {
 
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    startTelegramPoller();
   });
 }
 
