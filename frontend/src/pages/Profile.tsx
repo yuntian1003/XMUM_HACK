@@ -6,9 +6,12 @@ import { trpc } from "@/lib/trpc";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { getLocalScans } from "@/lib/db";
-import { LogOut, User, Cloud, Database, Info, Leaf } from "lucide-react";
+import { LogOut, User, Cloud, Database, Info, Leaf, Warehouse, PenLine, Check } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+const FARM_NAME_KEY = "agriguard-farm-name";
+const DISPLAY_NAME_KEY = "agriguard-display-name";
 
 export default function Profile() {
   const { user, isAuthenticated, loading, logout } = useAuth();
@@ -17,6 +20,23 @@ export default function Profile() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  // Personalization fields (stored in localStorage)
+  const [farmName, setFarmName] = useState(() => localStorage.getItem(FARM_NAME_KEY) ?? "");
+  const [displayName, setDisplayName] = useState(() => localStorage.getItem(DISPLAY_NAME_KEY) ?? "");
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editFarm, setEditFarm] = useState(farmName);
+  const [editDisplay, setEditDisplay] = useState(displayName);
+
+  // Use cached user from localStorage for instant display while tRPC query loads
+  const cachedUser = (() => {
+    try {
+      const raw = localStorage.getItem("user-info");
+      return raw && raw !== "null" ? JSON.parse(raw) : null;
+    } catch { return null; }
+  })();
+  const effectiveUser = user ?? cachedUser;
+  const effectiveAuth = isAuthenticated || Boolean(cachedUser?.name);
 
   const cloudStats = trpc.scans.stats.useQuery(undefined, { enabled: isAuthenticated });
   const utils = trpc.useUtils();
@@ -75,23 +95,109 @@ export default function Profile() {
 
       {/* Auth card */}
       {isAuthenticated ? (
-        <Card className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
-                <User className="w-7 h-7 text-primary" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-display font-bold text-lg text-foreground truncate">{user?.name ?? "Farmer"}</p>
-                <p className="text-sm text-muted-foreground truncate">{user?.email ?? "No email"}</p>
-                <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full mt-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+        <>
+          {/* Profile Identity Card */}
+          <Card className="shadow-sm overflow-hidden">
+            <div
+              className="h-16"
+              style={{
+                background: "linear-gradient(135deg, #0f172a 0%, #1a2744 50%, #0f2318 100%)",
+              }}
+            />
+            <CardContent className="p-4 -mt-8">
+              <div className="flex items-end justify-between gap-4 mb-3">
+                {/* Avatar with initials */}
+                <div
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center border-4 border-background shadow-md text-white font-bold text-xl shrink-0"
+                  style={{ background: "linear-gradient(135deg, #22c55e, #16a34a)" }}
+                >
+                  {(displayName || user?.name || "F").charAt(0).toUpperCase()}
+                </div>
+                <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full font-semibold mb-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                   Signed in
                 </span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {editingProfile ? (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-display-name">Display Name</Label>
+                    <Input
+                      id="edit-display-name"
+                      value={editDisplay}
+                      onChange={e => setEditDisplay(e.target.value)}
+                      placeholder={user?.name ?? "Your name"}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="edit-farm-name">Farm / Organization Name</Label>
+                    <Input
+                      id="edit-farm-name"
+                      value={editFarm}
+                      onChange={e => setEditFarm(e.target.value)}
+                      placeholder="e.g. Green Valley Farm"
+                    />
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => {
+                        localStorage.setItem(DISPLAY_NAME_KEY, editDisplay.trim());
+                        localStorage.setItem(FARM_NAME_KEY, editFarm.trim());
+                        setDisplayName(editDisplay.trim());
+                        setFarmName(editFarm.trim());
+                        setEditingProfile(false);
+                        toast.success("Profile updated!");
+                        // Notify other components via storage event
+                        window.dispatchEvent(new StorageEvent("storage", { key: FARM_NAME_KEY }));
+                        window.dispatchEvent(new StorageEvent("storage", { key: DISPLAY_NAME_KEY }));
+                      }}
+                    >
+                      <Check className="w-3.5 h-3.5" /> Save
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => {
+                      setEditFarm(farmName);
+                      setEditDisplay(displayName);
+                      setEditingProfile(false);
+                    }}>Cancel</Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="font-display font-bold text-lg text-foreground truncate">
+                      {displayName || user?.name || "Farmer"}
+                    </p>
+                    <p className="text-sm text-muted-foreground truncate">{user?.email ?? "No email"}</p>
+                    {farmName && (
+                      <div className="flex items-center gap-1.5 mt-1.5">
+                        <Warehouse className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-sm font-medium text-primary">{farmName}</span>
+                      </div>
+                    )}
+                    {!farmName && (
+                      <p className="text-xs text-muted-foreground mt-1">No farm name set — tap edit to add one</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 gap-1.5"
+                    onClick={() => {
+                      setEditDisplay(displayName);
+                      setEditFarm(farmName);
+                      setEditingProfile(true);
+                    }}
+                  >
+                    <PenLine className="w-3.5 h-3.5" /> Edit
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       ) : (
         <Card className="shadow-sm border-dashed">
           <CardContent className="p-6 text-center space-y-3">
