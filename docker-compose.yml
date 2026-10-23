@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: farmgpt-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: farmgpt_root
+      MYSQL_DATABASE: farmgpt
+      MYSQL_USER: farmgpt
+      MYSQL_PASSWORD: farmgpt_dev
+    ports:
+      - "3306:3306"
+    volumes:
+      - farmgpt_mysql_data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ufarmgpt", "-pfarmgpt_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  farmgpt_mysql_data:
+    driver: local
