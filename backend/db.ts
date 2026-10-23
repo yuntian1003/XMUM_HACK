@@ -16,12 +16,17 @@ let _db: any = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
+      const dbUrl = process.env.DATABASE_URL;
+      // Only use SSL for remote/cloud connections (not localhost / 127.0.0.1)
+      const isLocal = /[@/](localhost|127\.0\.0\.1)(:\d+)?[/]/.test(dbUrl);
       const pool = createPool({
-        uri: process.env.DATABASE_URL,
-        ssl: {
-          minVersion: "TLSv1.2",
-          rejectUnauthorized: true,
-        },
+        uri: dbUrl,
+        ...(isLocal ? {} : {
+          ssl: {
+            minVersion: "TLSv1.2",
+            rejectUnauthorized: true,
+          },
+        }),
       });
       _db = drizzle(pool as any);
     } catch (error) {
