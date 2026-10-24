@@ -830,9 +830,10 @@ export const appRouter = router({
       }),
 
     // Unlink (owner can re-link a different Telegram account).
+    // Also sends an unlink notification to the owner's Telegram.
     unlinkTelegram: protectedProcedure
-      .mutation(({ ctx }) => {
-        unlinkFarm(ctx.user.openId);
+      .mutation(async ({ ctx }) => {
+        await unlinkFarm(ctx.user.openId);
         return { ok: true };
       }),
 

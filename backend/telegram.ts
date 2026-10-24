@@ -149,10 +149,32 @@ export function isFarmLinked(userId: string): boolean {
   return farmChatIdMap.has(userId);
 }
 
-/** Unlink a user's Telegram (so they can re-link a different account). */
-export function unlinkFarm(userId: string): void {
+/** Unlink a user's Telegram and notify them via bot message. */
+export async function unlinkFarm(userId: string): Promise<void> {
+  const chatId = farmChatIdMap.get(userId);
   deleteFarmLink(userId);
   console.log(`[Telegram] User "${userId}" unlinked.`);
+
+  // Notify the owner on Telegram that their account has been unlinked
+  if (chatId && BOT_TOKEN) {
+    try {
+      await telegramPost("sendMessage", {
+        chat_id: chatId,
+        text: [
+          `🔓 *AgriGuard Farm Desk — Telegram Unlinked*`,
+          ``,
+          `Your Telegram account has been unlinked from AgriGuard Farm Desk.`,
+          ``,
+          `You will no longer receive Purchase Order approval requests here.`,
+          ``,
+          `To re-link, sign in to Farm Desk, switch to the *Owner* role, and tap *"Get My Link Code"*, then send \`/link <code>\` to this bot.`,
+        ].join("\n"),
+        parse_mode: "Markdown",
+      });
+    } catch (err) {
+      console.warn(`[Telegram] Could not send unlink notification to chat_id ${chatId}:`, err);
+    }
+  }
 }
 
 // ── Core update processor ──────────────────────────────────────────────────────
