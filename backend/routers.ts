@@ -26,10 +26,13 @@ import {
   sendPOToTelegram,
   getPOStatus,
   getOrCreateLinkCode,
+  getLinkedOwnerIds,
+  saveCurrentLinks,
   isFarmLinked,
   unlinkFarm,
   type POItem,
 } from "./telegram";
+import { getAllLocalAuthUsers } from "./_core/localAuthStore";
 import {
   FoodMonitorAiFlowNameSchema,
   FoodMonitorJobNameSchema,
@@ -818,25 +821,45 @@ export const appRouter = router({
       }),
 
     // Check whether the current logged-in user has a linked Telegram.
+    // Also flushes any in-memory links to disk so they survive restarts.
     getLinkStatus: protectedProcedure
-      .query(({ ctx }) => ({
-        linked: isFarmLinked(ctx.user.openId),
-        farmId: ctx.user.openId,
-      })),
+      .query(({ ctx }) => {
+        const linked = isFarmLinked(ctx.user.openId);
+        if (linked) saveCurrentLinks(); // ensure persisted to disk
+        return { linked, farmId: ctx.user.openId };
+      }),
 
     // Unlink (owner can re-link a different Telegram account).
+    // Also sends an unlink notification to the owner's Telegram.
     unlinkTelegram: protectedProcedure
-      .mutation(({ ctx }) => {
-        unlinkFarm(ctx.user.openId);
+      .mutation(async ({ ctx }) => {
+        await unlinkFarm(ctx.user.openId);
         return { ok: true };
       }),
 
-    // Send the PO draft — farmId identifies whose linked Telegram to use.
+    // List all registered owners for the Worker's owner picker.
+    // Returns ALL users with a telegramLinked flag so workers can always pick,
+    // even if the owner hasn't linked Telegram yet.
+    getAllOwners: publicProcedure
+      .query(() => {
+        const linkedIds = new Set(getLinkedOwnerIds());
+        const allUsers = getAllLocalAuthUsers();
+        return allUsers.map((u) => ({
+          openId: u.openId,
+          name: u.name,
+          email: u.email,
+          telegramLinked: linkedIds.has(u.openId),
+        }));
+      }),
+
+    // Send the PO draft — targetFarmId is the worker-selected owner's openId.
+    // Falls back to the manager's own farmId if no target was selected.
     sendPO: publicProcedure
       .input(
         z.object({
           poId: z.string(),
           farmId: z.string(),
+          targetFarmId: z.string().optional(),
           items: z.array(
             z.object({
               name: z.string(),
@@ -848,7 +871,8 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ input }) => {
-        return sendPOToTelegram(input.poId, input.items as POItem[], input.farmId);
+        const recipientId = input.targetFarmId ?? input.farmId;
+        return sendPOToTelegram(input.poId, input.items as POItem[], recipientId);
       }),
 
     // Poll for the owner's approve/reject decision.
