@@ -170,15 +170,19 @@ export function getOrCreateLinkCode(userId: string): string {
 }
 
 // Seed link codes for all registered users on startup so /link works after restart
-void getAllLocalAuthUsers().then((users) => {
-  for (const u of users) {
-    const code = hashUserId(u.openId);
-    linkCodes.set(code, { userId: u.openId, expiresAt: Infinity });
+async function preSeedLinkCodes(): Promise<void> {
+  try {
+    const users = await getAllLocalAuthUsers();
+    for (const u of users) {
+      const code = hashUserId(u.openId);
+      linkCodes.set(code, { userId: u.openId, expiresAt: Infinity });
+    }
+    console.log(`[Telegram] Pre-seeded ${linkCodes.size} link code(s) from registered users.`);
+  } catch (err: unknown) {
+    console.warn("[Telegram] Failed to pre-seed link codes:", err);
   }
-  console.log(`[Telegram] Pre-seeded ${linkCodes.size} link code(s) from registered users.`);
-}).catch((err) => {
-  console.warn("[Telegram] Failed to pre-seed link codes:", err);
-});
+}
+void preSeedLinkCodes();
 
 
 /** Returns true if the user already has a linked Telegram account. */
