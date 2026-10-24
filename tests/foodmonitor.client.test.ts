@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFoodMonitorClient, createFoodMonitorConfig, FoodMonitorUpstreamError } from "./integrations/foodmonitor";
+import { createFoodMonitorClient, createFoodMonitorConfig, FoodMonitorUpstreamError } from "../backend/integrations/foodmonitor";
 
 function createTestConfig(overrides: Partial<ReturnType<typeof createFoodMonitorConfig>> = {}) {
   return {
@@ -26,12 +26,12 @@ describe("foodmonitor client", () => {
   });
 
   it("calls REST read endpoints with auth headers", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(JSON.stringify({ status: "ok", time: "2026-04-15T00:00:00.000Z" }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
-    ) as unknown as typeof fetch;
+    );
 
     const client = createFoodMonitorClient({
       config: createTestConfig(),
@@ -49,12 +49,12 @@ describe("foodmonitor client", () => {
   });
 
   it("sends x-job-secret only for internal job calls", async () => {
-    const fetchMock = vi.fn(async () =>
+    const fetchMock = vi.fn<typeof fetch>(async () =>
       new Response(JSON.stringify({ job: "fuel-price", success: true }), {
         status: 200,
         headers: { "content-type": "application/json" },
       })
-    ) as unknown as typeof fetch;
+    );
 
     const client = createFoodMonitorClient({
       config: createTestConfig(),
@@ -62,7 +62,7 @@ describe("foodmonitor client", () => {
       headerProvider: async () => ({ Authorization: "Bearer test-token" }),
     });
 
-    await client.runJob("fuel-price", { beforeDate: "2026-04-01", limit: 10 });
+    const result = await client.runJob("fuel-price", { beforeDate: "2026-04-01", limit: 10 });
 
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     const headers = new Headers(init.headers);
@@ -72,7 +72,7 @@ describe("foodmonitor client", () => {
   });
 
   it("fails closed for internal endpoints without a server-side job secret", async () => {
-    const fetchMock = vi.fn() as unknown as typeof fetch;
+    const fetchMock = vi.fn<typeof fetch>();
     const client = createFoodMonitorClient({
       config: createTestConfig({ jobSharedSecret: "" }),
       fetchImpl: fetchMock,

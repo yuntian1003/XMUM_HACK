@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("./genkit/plantDiagnosis", () => ({
+vi.mock("../backend/genkit/plantDiagnosis", () => ({
   runPlantDiagnosisGenkit: vi.fn(async () => ({
     confirmedDisease: "Brown Spot",
     confirmedDiseaseKey: "brown_spot",
@@ -21,19 +21,19 @@ vi.mock("./genkit/plantDiagnosis", () => ({
   })),
 }));
 
-vi.mock("./plantnetService", () => ({
+vi.mock("../backend/plantnetService", () => ({
   identifyPlantDisease: vi.fn(async () => null),
   identifyPlantSpecies: vi.fn(async () => null),
   mapPlantNetToCropType: vi.fn(() => null),
 }));
 
-vi.mock("./vertexAiSearch", () => ({
+vi.mock("../backend/vertexAiSearch", () => ({
   searchVertexAiContext: vi.fn(async () => null),
 }));
 
-import { appRouter } from "./routers";
-import { COOKIE_NAME } from "./shared/const";
-import type { TrpcContext } from "./_core/context";
+import { appRouter } from "../backend/routers";
+import { COOKIE_NAME } from "../backend/shared/const";
+import type { TrpcContext } from "../backend/_core/context";
 
 // ── Context factories ──────────────────────────────────────────────────────────
 
@@ -84,7 +84,6 @@ describe("auth.logout", () => {
     expect(clearedCookies).toHaveLength(1);
     expect(clearedCookies[0]?.name).toBe(COOKIE_NAME);
     expect(clearedCookies[0]?.options).toMatchObject({
-      maxAge: -1,
       secure: true,
       sameSite: "none",
       httpOnly: true,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { TrpcContext } from "./_core/context";
+import type { TrpcContext } from "../backend/_core/context";
 
 const foodMonitorClientMock = vi.hoisted(() => ({
   callTrpcQuery: vi.fn(async (path: string, input?: unknown) => ({ path, input })),
@@ -23,16 +23,16 @@ const foodMonitorClientMock = vi.hoisted(() => ({
   })),
 }));
 
-vi.mock("./integrations/foodmonitor", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("./integrations/foodmonitor")>();
+vi.mock("../backend/integrations/foodmonitor", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../backend/integrations/foodmonitor")>();
   return {
     ...actual,
     foodMonitorClient: foodMonitorClientMock,
   };
 });
 
-import { appRouter } from "./routers";
-import { FoodMonitorUpstreamError } from "./integrations/foodmonitor";
+import { appRouter } from "../backend/routers";
+import { FoodMonitorUpstreamError } from "../backend/integrations/foodmonitor";
 
 type UserRole = NonNullable<TrpcContext["user"]>["role"];
 

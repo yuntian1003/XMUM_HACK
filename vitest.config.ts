@@ -5,7 +5,7 @@ import react from "@vitejs/plugin-react";
 const templateRoot = path.resolve(import.meta.dirname);
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react() as any],
   root: templateRoot,
   resolve: {
     alias: {
@@ -16,7 +16,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["backend/**/*.test.ts", "backend/**/*.spec.ts"],
+    include: ["tests/**/*.test.ts", "tests/**/*.spec.ts"],
     globals: true,
   },
 });
