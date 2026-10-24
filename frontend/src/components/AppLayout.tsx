@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Home, Camera, BarChart2, Building2, User, Leaf, Wifi, WifiOff, Menu, X, Shield, Warehouse } from "lucide-react";
+import { Home, Camera, BarChart2, Building2, User, Leaf, Wifi, WifiOff, Menu, X, Warehouse } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -89,27 +89,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         {/* Logo */}
         <Link href="/">
-          <div className="flex items-center gap-2.5 cursor-pointer group">
-            <div
-              className="w-8 h-8 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105"
-              style={{
-                background: "linear-gradient(135deg, #22c55e, #16a34a)",
-                boxShadow: "0 0 16px rgba(34,197,94,0.35)",
-              }}
-            >
-              <Shield className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex flex-col leading-none">
-              <span
-                className="font-display font-bold text-white text-base tracking-tight"
-                style={{ textShadow: "0 0 20px rgba(34,197,94,0.3)" }}
-              >
-                AgriGuard
-              </span>
-              <span className="text-[9px] font-semibold tracking-[0.2em] uppercase" style={{ color: "rgba(134,239,172,0.7)" }}>
-                AI Platform
-              </span>
-            </div>
+          <div className="flex items-center gap-2 cursor-pointer transition-transform hover:scale-105">
+            <img
+              src="/images/agriguard-mark.png"
+              alt=""
+              aria-hidden="true"
+              className="h-8 w-8 object-contain"
+            />
+            <img
+              src="/images/agriguard-logo.png"
+              alt="AgriGuard"
+              className="h-6 w-28 object-contain"
+            />
           </div>
         </Link>
 
