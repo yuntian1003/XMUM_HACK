@@ -100,3 +100,9 @@ export function verifyLocalAuthUser(params: {
   const hash = derivePasswordHash(params.password, user.salt);
   return hash === user.passwordHash ? user : null;
 }
+
+/** Returns public-safe info for all registered local-auth users. */
+export function getAllLocalAuthUsers(): Array<{ openId: string; name: string; email: string }> {
+  const data = readStore();
+  return data.users.map(({ openId, name, email }) => ({ openId, name, email }));
+}

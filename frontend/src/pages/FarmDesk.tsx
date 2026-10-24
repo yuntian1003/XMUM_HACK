@@ -189,6 +189,13 @@ export default function FarmDesk() {
   // Auth — the logged-in user's openId doubles as the farmId for Telegram routing
   const { user, isAuthenticated } = useAuth();
   const farmId = user?.openId ?? null;
+  // Worker-selected target owner
+  const [selectedOwner, setSelectedOwner] = useState<{ openId: string; name: string } | null>(null);
+  const [ownerSearch, setOwnerSearch] = useState("");
+  // Fetch all registered users so the worker can pick an owner
+  const ownersQuery = trpc.farmDesk.getAllOwners.useQuery(undefined, {
+    refetchInterval: 15_000,
+  });
   // Telegram PO send state
   const [telegramPoId, setTelegramPoId] = useState<string | null>(null);
   const [telegramStatus, setTelegramStatus] = useState<"idle" | "sending" | "sent" | "approved" | "rejected">("idle");
@@ -302,6 +309,10 @@ export default function FarmDesk() {
       toast.error("Switch to the Worker role to submit a field photo.");
       return;
     }
+    if (!selectedOwner) {
+      toast.error("Please select an owner account before submitting.");
+      return;
+    }
     if (!imageFile) {
       toast.error("Upload a synthetic crop-anomaly photo first.");
       return;
@@ -370,7 +381,7 @@ export default function FarmDesk() {
         treatmentSteps,
         treatmentNote: "",
         activity: [
-          createActivity(role, "Crop photo submitted", imageFile.name),
+          createActivity(role, "Crop photo submitted", `${imageFile.name} — Owner: ${selectedOwner?.name ?? "(none)"}`),
           createActivity("System", "Diagnosis suggested", logDetail),
           ...current.activity,
         ],
@@ -406,12 +417,12 @@ export default function FarmDesk() {
         ),
         ...(approved
           ? [createActivity(
-              "System",
-              "Stock check complete",
-              shortages.length > 0
-                ? `Mock inventory shows ${shortages.length} item(s) below the planned requirement; draft purchase order prepared for owner review.`
-                : "Mock inventory covers the planned requirements; no supplier order is needed."
-            )]
+            "System",
+            "Stock check complete",
+            shortages.length > 0
+              ? `Mock inventory shows ${shortages.length} item(s) below the planned requirement; draft purchase order prepared for owner review.`
+              : "Mock inventory covers the planned requirements; no supplier order is needed."
+          )]
           : []),
         ...current.activity,
       ],
@@ -453,8 +464,17 @@ export default function FarmDesk() {
       toast.error("No stock shortages to send.");
       return;
     }
-    if (!linkStatusQuery.data?.linked) {
-      toast.error("The Owner must link their Telegram first (switch to Owner role).");
+    // Prefer the worker-selected owner; fall back to manager's own linked account
+    const recipientId = selectedOwner?.openId ?? farmId;
+    const isRecipientLinked = selectedOwner
+      ? ownersQuery.data?.find((o) => o.openId === recipientId)?.telegramLinked
+      : linkStatusQuery.data?.linked;
+    if (!isRecipientLinked) {
+      toast.error(
+        selectedOwner
+          ? `Owner "${selectedOwner.name}" has not linked their Telegram yet.`
+          : "The Owner must link their Telegram first (switch to Owner role)."
+      );
       return;
     }
     setTelegramStatus("sending");
@@ -463,6 +483,7 @@ export default function FarmDesk() {
       await sendPoMutation.mutateAsync({
         poId,
         farmId,
+        targetFarmId: recipientId,
         items: shortages.map((item) => ({
           name: item.name,
           qty: shortageFor(item),
@@ -476,11 +497,15 @@ export default function FarmDesk() {
       setDesk((current) => ({
         ...current,
         activity: [
-          createActivity(role, "PO sent to Telegram", `Draft PO ${poId} dispatched to Owner on Telegram for approval.`),
+          createActivity(
+            role,
+            "PO sent to Telegram",
+            `Draft PO ${poId} dispatched to ${selectedOwner?.name ?? "Owner"} on Telegram for approval.`
+          ),
           ...current.activity,
         ],
       }));
-      toast.success("📨 PO draft sent to owner's Telegram!");
+      toast.success(`📨 PO draft sent to ${selectedOwner?.name ?? "owner"}'s Telegram!`);
     } catch (err) {
       setTelegramStatus("idle");
       toast.error("Failed to send PO to Telegram. Check bot configuration.");
@@ -555,6 +580,8 @@ export default function FarmDesk() {
     });
     setImageFile(null);
     setStockEdits({});
+    setSelectedOwner(null);
+    setOwnerSearch("");
     setTab("workflow");
     toast.success("Demo reset to the synthetic starting data.");
   };
@@ -650,6 +677,86 @@ export default function FarmDesk() {
                   </div>
                   {desk.reviewStatus === "not-started" ? (
                     <>
+                      {/* ── Owner selector (Worker must pick before submitting) ── */}
+                      <div className="space-y-2">
+                        <Label htmlFor="owner-search" className="text-sm font-bold text-slate-700">
+                          Select owner account <span className="text-rose-500">*</span>
+                        </Label>
+                        {selectedOwner ? (
+                          <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5">
+                            <div>
+                              <p className="text-sm font-bold text-emerald-900">{selectedOwner.name}</p>
+                              <p className="text-xs text-emerald-700">Telegram linked ✓</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-500 hover:bg-emerald-100"
+                              onClick={() => { setSelectedOwner(null); setOwnerSearch(""); }}
+                              disabled={role !== "Worker"}
+                            >
+                              Change
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="relative">
+                              <input
+                                id="owner-search"
+                                type="text"
+                                placeholder="Search owner name…"
+                                value={ownerSearch}
+                                onChange={(e) => setOwnerSearch(e.target.value)}
+                                disabled={role !== "Worker"}
+                                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-100 disabled:opacity-50"
+                              />
+                            </div>
+                            {ownersQuery.isLoading && (
+                              <p className="flex items-center gap-1.5 text-xs text-slate-500">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Loading owners…
+                              </p>
+                            )}
+                            {ownersQuery.data && (() => {
+                              const filtered = ownersQuery.data.filter(
+                                (o) =>
+                                  ownerSearch.trim() === "" ||
+                                  o.name.toLowerCase().includes(ownerSearch.toLowerCase()) ||
+                                  o.email.toLowerCase().includes(ownerSearch.toLowerCase())
+                              );
+                              return filtered.length > 0 ? (
+                                <ul className="max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-md">
+                                  {filtered.map((owner) => (
+                                    <li key={owner.openId}>
+                                      <button
+                                        type="button"
+                                        className="flex w-full items-center justify-between px-4 py-2.5 text-left hover:bg-emerald-50 disabled:opacity-50"
+                                        disabled={role !== "Worker"}
+                                        onClick={() => {
+                                          setSelectedOwner({ openId: owner.openId, name: owner.name });
+                                          setOwnerSearch(owner.name);
+                                        }}
+                                      >
+                                        <span className="text-sm font-semibold text-slate-800">{owner.name}</span>
+                                        {owner.telegramLinked
+                                          ? <span className="text-xs font-semibold text-emerald-600">✓ Telegram linked</span>
+                                          : <span className="text-xs font-semibold text-amber-500">⚠ No Telegram</span>}
+                                      </button>
+                                    </li>
+                                  ))}
+                                </ul>
+                              ) : ownerSearch.trim() !== "" ? (
+                                <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
+                                  No owner matching "{ownerSearch}".
+                                </p>
+                              ) : (
+                                <p className="rounded-xl border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
+                                  No registered accounts found.
+                                </p>
+                              );
+                            })()}
+                          </>
+                        )}
+                      </div>
+
                       <label className="flex min-h-36 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-emerald-200 bg-emerald-50/60 p-5 text-center hover:bg-emerald-50">
                         <Upload className="mb-2 h-7 w-7 text-emerald-700" />
                         <span className="text-sm font-bold text-emerald-950">{imageFile ? imageFile.name : "Choose synthetic crop-anomaly photo"}</span>
@@ -665,9 +772,10 @@ export default function FarmDesk() {
                           </div>
                         </div>
                       )}
-                      <Button onClick={runDiagnosis} disabled={!imageFile || role !== "Worker" || isClassifying} className="w-full sm:w-auto">
+                      <Button onClick={runDiagnosis} disabled={!imageFile || !selectedOwner || role !== "Worker" || isClassifying} className="w-full sm:w-auto">
                         <Leaf /> {isClassifying ? "Checking image…" : "Run crop screening"} <ArrowRight />
                       </Button>
+                      {!selectedOwner && role === "Worker" && <p className="text-xs font-medium text-rose-600">Select an owner account above before submitting.</p>}
                       {role !== "Worker" && <p className="text-xs font-medium text-amber-700">Switch to Worker to submit the field photo.</p>}
                     </>
                   ) : (
@@ -775,14 +883,20 @@ export default function FarmDesk() {
                               {/* ── Telegram PO Panel ───────────────────────────────────── */}
                               {telegramStatus === "idle" && (
                                 <div className="rounded-xl border border-sky-100 bg-sky-50 p-4 space-y-3">
-                                  <p className="text-sm font-semibold text-sky-900">📱 Send PO to Owner via Telegram</p>
+                                  <p className="text-sm font-semibold text-sky-900">📱 Send PO to Owner via Telegram
+                                    {selectedOwner && (
+                                      <span className="ml-2 rounded-full bg-sky-200 px-2 py-0.5 text-xs font-bold text-sky-900">
+                                        → {selectedOwner.name}
+                                      </span>
+                                    )}
+                                  </p>
                                   <p className="text-xs text-sky-700">The owner will receive an interactive Telegram message with ✅ Approve and ❌ Reject buttons. The Farm Desk will update automatically when a decision is made.</p>
                                   <Button
                                     size="sm"
                                     className="bg-sky-600 hover:bg-sky-700 text-white gap-2"
                                     onClick={sendPOToTelegram}
                                   >
-                                    <Send className="h-4 w-4" /> Send PO to Telegram
+                                    <Send className="h-4 w-4" /> Send PO to{selectedOwner ? ` ${selectedOwner.name}` : " Telegram"}
                                   </Button>
                                 </div>
                               )}
@@ -813,7 +927,7 @@ export default function FarmDesk() {
                           )
                         ) : (
                           <p className={`rounded-lg p-3 text-sm font-bold ${desk.orderStatus === "approved" ? "bg-emerald-50 text-emerald-800" : "bg-rose-50 text-rose-800"}`}>
-                            {desk.orderStatus === "approved" ? "Owner approved the draft. It has not been sent to the supplier." : "Owner rejected the draft. It has not been sent to the supplier."}
+                            {desk.orderStatus === "approved" ? "Owner approved the draft. Please proceed to send the draft to the supplier." : "Owner rejected the draft. Please do not send the draft to the supplier."}
                           </p>
                         )}
                         <div className="space-y-2 border-t pt-4">
