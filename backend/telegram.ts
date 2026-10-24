@@ -2,6 +2,8 @@
  * Telegram Bot service for Farm Desk PO approval workflow.
  *
  * Supports MULTIPLE owners — each farm links its own owner independently.
+ * farmChatIdMap is persisted to .local-auth/telegram-links.json so links
+ * survive server restarts.
  *
  * Multi-owner linking flow:
  *  1. Farm owner opens Farm Desk → switches to "Owner" role.
@@ -17,10 +19,14 @@
  *  4. Frontend polls trpc.farmDesk.pollStatus every 3s and auto-updates UI.
  */
 
+import fs from "node:fs";
+import path from "node:path";
+import { getAllLocalAuthUsers } from "./_core/localAuthStore";
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? "";
 const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
-// ── In-memory PO state ─────────────────────────────────────────────────────────
+// ── In-memory PO state (transient — OK to reset between restarts) ──────────────
 
 export type POStatus = "pending" | "approved" | "rejected";
 
@@ -33,9 +39,50 @@ interface PORecord {
 
 const poStore = new Map<string, PORecord>();
 
-// ── Multi-owner: farmId → Telegram chatId ─────────────────────────────────────
+// ── Persisted multi-owner map: farmId → Telegram chatId ───────────────────────
+// Stored in .local-auth/telegram-links.json so links survive server restarts.
 
-const farmChatIdMap = new Map<string, number>();
+const LINKS_DIR  = path.resolve(import.meta.dirname, "..", ".local-auth");
+const LINKS_FILE = path.resolve(LINKS_DIR, "telegram-links.json");
+
+function readLinks(): Record<string, number> {
+  try {
+    if (!fs.existsSync(LINKS_FILE)) return {};
+    const raw = fs.readFileSync(LINKS_FILE, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, number>;
+    }
+  } catch {
+    // ignore parse errors — start fresh
+  }
+  return {};
+}
+
+function writeLinks(data: Record<string, number>): void {
+  if (!fs.existsSync(LINKS_DIR)) fs.mkdirSync(LINKS_DIR, { recursive: true });
+  fs.writeFileSync(LINKS_FILE, JSON.stringify(data, null, 2), "utf-8");
+}
+
+// Bootstrap in-memory Map from disk on module load
+const farmChatIdMap = new Map<string, number>(Object.entries(readLinks()));
+console.log(`[Telegram] Loaded ${farmChatIdMap.size} persisted farm link(s) from disk.`);
+
+
+function saveFarmLink(userId: string, chatId: number): void {
+  farmChatIdMap.set(userId, chatId);
+  const snapshot: Record<string, number> = {};
+  for (const [k, v] of farmChatIdMap) snapshot[k] = v;
+  writeLinks(snapshot);
+  console.log(`[Telegram] Saved link for "${userId}" → chat_id ${chatId} to disk.`);
+}
+
+function deleteFarmLink(userId: string): void {
+  farmChatIdMap.delete(userId);
+  const snapshot: Record<string, number> = {};
+  for (const [k, v] of farmChatIdMap) snapshot[k] = v;
+  writeLinks(snapshot);
+}
 
 // ── Link codes: code → userId ─────────────────────────────────────────────────
 // Codes are permanent and deterministic (derived from openId).
@@ -89,15 +136,45 @@ export function getOrCreateLinkCode(userId: string): string {
   return code;
 }
 
+// Seed link codes for all registered users on startup so /link works after restart
+for (const u of getAllLocalAuthUsers()) {
+  const code = hashUserId(u.openId);
+  linkCodes.set(code, { userId: u.openId, expiresAt: Infinity });
+}
+console.log(`[Telegram] Pre-seeded ${linkCodes.size} link code(s) from registered users.`);
+
+
 /** Returns true if the user already has a linked Telegram account. */
 export function isFarmLinked(userId: string): boolean {
   return farmChatIdMap.has(userId);
 }
 
-/** Unlink a user's Telegram (so they can re-link a different account). */
-export function unlinkFarm(userId: string): void {
-  farmChatIdMap.delete(userId);
+/** Unlink a user's Telegram and notify them via bot message. */
+export async function unlinkFarm(userId: string): Promise<void> {
+  const chatId = farmChatIdMap.get(userId);
+  deleteFarmLink(userId);
   console.log(`[Telegram] User "${userId}" unlinked.`);
+
+  // Notify the owner on Telegram that their account has been unlinked
+  if (chatId && BOT_TOKEN) {
+    try {
+      await telegramPost("sendMessage", {
+        chat_id: chatId,
+        text: [
+          `🔓 *AgriGuard Farm Desk — Telegram Unlinked*`,
+          ``,
+          `Your Telegram account has been unlinked from AgriGuard Farm Desk.`,
+          ``,
+          `You will no longer receive Purchase Order approval requests here.`,
+          ``,
+          `To re-link, sign in to Farm Desk, switch to the *Owner* role, and tap *"Get My Link Code"*, then send \`/link <code>\` to this bot.`,
+        ].join("\n"),
+        parse_mode: "Markdown",
+      });
+    } catch (err) {
+      console.warn(`[Telegram] Could not send unlink notification to chat_id ${chatId}:`, err);
+    }
+  }
 }
 
 // ── Core update processor ──────────────────────────────────────────────────────
@@ -139,7 +216,7 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
       }
 
       // ✅ Link this user's account to their Telegram chatId
-      farmChatIdMap.set(entry.userId, chatId);
+      saveFarmLink(entry.userId, chatId);
       // Keep the code in the map so it can be re-used (it's permanent)
       console.log(`[Telegram] User "${entry.userId}" linked → chat_id ${chatId} (@${update.message.from?.username ?? "unknown"})`);
 
@@ -335,4 +412,24 @@ export async function sendPOToTelegram(
 
 export function getPOStatus(poId: string): PORecord | null {
   return poStore.get(poId) ?? null;
+}
+
+/**
+ * Returns all farmIds (userIds) that currently have a linked Telegram chatId.
+ * Used so a worker can pick which owner to target when submitting a PO workflow.
+ */
+export function getLinkedOwnerIds(): string[] {
+  return Array.from(farmChatIdMap.keys());
+}
+
+/**
+ * Force-writes the current in-memory farmChatIdMap to disk.
+ * Call this after a link is confirmed in-memory to ensure it persists across restarts.
+ */
+export function saveCurrentLinks(): number {
+  const snapshot: Record<string, number> = {};
+  for (const [k, v] of farmChatIdMap) snapshot[k] = v;
+  writeLinks(snapshot);
+  console.log(`[Telegram] Force-saved ${farmChatIdMap.size} link(s) to disk.`);
+  return farmChatIdMap.size;
 }
