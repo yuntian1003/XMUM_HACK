@@ -73,6 +73,16 @@ type DeskState = {
 };
 
 const STORAGE_KEY = "farm-desk-demo-v1";
+const PO_ID_KEY   = "farm-desk-pending-po-v1"; // persists the active PO ID across reloads
+
+/** Read any in-flight PO ID from localStorage (null if none). */
+function readSavedPoId(): string | null {
+  try {
+    return localStorage.getItem(PO_ID_KEY) ?? null;
+  } catch {
+    return null;
+  }
+}
 
 const INITIAL_SUPPLIES: SupplyItem[] = [
   {
@@ -197,9 +207,20 @@ export default function FarmDesk() {
   const ownersQuery = trpc.farmDesk.getAllOwners.useQuery(undefined, {
     refetchInterval: 15_000,
   });
-  // Telegram PO send state
-  const [telegramPoId, setTelegramPoId] = useState<string | null>(null);
-  const [telegramStatus, setTelegramStatus] = useState<"idle" | "sending" | "sent" | "approved" | "rejected">("idle");
+  // Telegram PO send state — initialised from localStorage so polling resumes after reload
+  const [telegramPoId, setTelegramPoId] = useState<string | null>(() => {
+    // Restore if there is a persisted PO ID and the desk still shows it as pending
+    const savedPoId = readSavedPoId();
+    const savedDesk  = readSavedState();
+    if (savedPoId && savedDesk.orderStatus === "pending") return savedPoId;
+    return null;
+  });
+  const [telegramStatus, setTelegramStatus] = useState<"idle" | "sending" | "sent" | "approved" | "rejected">(() => {
+    const savedPoId = readSavedPoId();
+    const savedDesk  = readSavedState();
+    if (savedPoId && savedDesk.orderStatus === "pending") return "sent";
+    return "idle";
+  });
   const [telegramDecidedAt, setTelegramDecidedAt] = useState<string | null>(null);
   // Telegram link state (for Owner role)
   const [linkCode, setLinkCode] = useState<string | null>(null);
@@ -251,8 +272,20 @@ export default function FarmDesk() {
   const canEditStock = role !== "Worker";
 
   // ── Telegram polling ────────────────────────────────────────────────────────
+  // Persist poId to localStorage whenever it changes so polling survives reloads
+  useEffect(() => {
+    try {
+      if (telegramPoId) {
+        localStorage.setItem(PO_ID_KEY, telegramPoId);
+      } else {
+        localStorage.removeItem(PO_ID_KEY);
+      }
+    } catch { /* ignore */ }
+  }, [telegramPoId]);
+
   const pollStatusQuery = trpc.farmDesk.pollStatus.useQuery(
     { poId: telegramPoId ?? "" },
+    // Poll while status is "sent" (awaiting decision) or after a reload when orderStatus is still pending
     { enabled: !!telegramPoId && telegramStatus === "sent", refetchInterval: 3000 }
   );
 
@@ -497,6 +530,8 @@ export default function FarmDesk() {
       setTelegramPoId(poId);
       setTelegramStatus("sent");
       setTelegramDecidedAt(null);
+      // Persist the new PO ID immediately so it survives a page reload
+      try { localStorage.setItem(PO_ID_KEY, poId); } catch { /* ignore */ }
       setDesk((current) => ({
         ...current,
         activity: [

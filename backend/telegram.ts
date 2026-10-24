@@ -45,6 +45,41 @@ const poStore = new Map<string, PORecord>();
 const LINKS_DIR  = path.resolve(import.meta.dirname, "..", ".local-auth");
 const LINKS_FILE = path.resolve(LINKS_DIR, "telegram-links.json");
 
+// ── Persist poStore to disk so approvals survive server restarts ───────────────
+// Stored in .local-auth/po-store.json; read on startup, written after every change.
+
+const PO_STORE_FILE = path.resolve(LINKS_DIR, "po-store.json");
+
+function readPoStore(): Record<string, PORecord> {
+  try {
+    if (!fs.existsSync(PO_STORE_FILE)) return {};
+    const raw = fs.readFileSync(PO_STORE_FILE, "utf-8");
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+      return parsed as Record<string, PORecord>;
+    }
+  } catch {
+    // ignore parse errors — start fresh
+  }
+  return {};
+}
+
+function writePoStore(): void {
+  try {
+    if (!fs.existsSync(LINKS_DIR)) fs.mkdirSync(LINKS_DIR, { recursive: true });
+    const snapshot: Record<string, PORecord> = {};
+    poStore.forEach((v, k) => { snapshot[k] = v; });
+    fs.writeFileSync(PO_STORE_FILE, JSON.stringify(snapshot, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[Telegram] Could not persist poStore to disk:", err);
+  }
+}
+
+// Bootstrap poStore from disk on module load so approvals survive restarts
+const _savedPoRecords = readPoStore();
+Object.entries(_savedPoRecords).forEach(([k, v]) => poStore.set(k, v));
+console.log(`[Telegram] Loaded ${poStore.size} persisted PO record(s) from disk.`);
+
 function readLinks(): Record<string, number> {
   try {
     if (!fs.existsSync(LINKS_FILE)) return {};
@@ -135,11 +170,15 @@ export function getOrCreateLinkCode(userId: string): string {
 }
 
 // Seed link codes for all registered users on startup so /link works after restart
-for (const u of getAllLocalAuthUsers()) {
-  const code = hashUserId(u.openId);
-  linkCodes.set(code, { userId: u.openId, expiresAt: Infinity });
-}
-console.log(`[Telegram] Pre-seeded ${linkCodes.size} link code(s) from registered users.`);
+void getAllLocalAuthUsers().then((users) => {
+  for (const u of users) {
+    const code = hashUserId(u.openId);
+    linkCodes.set(code, { userId: u.openId, expiresAt: Infinity });
+  }
+  console.log(`[Telegram] Pre-seeded ${linkCodes.size} link code(s) from registered users.`);
+}).catch((err) => {
+  console.warn("[Telegram] Failed to pre-seed link codes:", err);
+});
 
 
 /** Returns true if the user already has a linked Telegram account. */
@@ -257,6 +296,7 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
     messageId: existing?.messageId ?? cq.message?.message_id ?? 0,
     decidedAt,
   });
+  writePoStore(); // persist decision immediately
 
   // Acknowledge button tap (clears spinner on Telegram)
   await telegramPost("answerCallbackQuery", {
@@ -404,6 +444,7 @@ export async function sendPOToTelegram(
   })) as { message_id: number };
 
   poStore.set(poId, { poId, status: "pending", messageId: result.message_id });
+  writePoStore(); // persist initial pending state
   console.log(`[Telegram] PO ${poId} → farm "${farmId}" owner (chat_id ${chatId})`);
   return { poId };
 }

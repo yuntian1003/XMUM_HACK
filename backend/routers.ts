@@ -369,7 +369,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const user = createLocalAuthUser({
+        const user = await createLocalAuthUser({
           name: input.name,
           email: input.email,
           password: input.password,
@@ -408,7 +408,7 @@ export const appRouter = router({
         })
       )
       .mutation(async ({ ctx, input }) => {
-        const user = verifyLocalAuthUser({
+        const user = await verifyLocalAuthUser({
           email: input.email,
           password: input.password,
         });
@@ -841,9 +841,9 @@ export const appRouter = router({
     // Returns ALL users with a telegramLinked flag so workers can always pick,
     // even if the owner hasn't linked Telegram yet.
     getAllOwners: publicProcedure
-      .query(() => {
+      .query(async () => {
         const linkedIds = new Set(getLinkedOwnerIds());
-        const allUsers = getAllLocalAuthUsers();
+        const allUsers = await getAllLocalAuthUsers();
         return allUsers.map((u) => ({
           openId: u.openId,
           name: u.name,

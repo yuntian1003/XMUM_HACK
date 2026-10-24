@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { createPool } from "mysql2/promise";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import {
   users, scans, newsItems, riskScores, fxSnapshots,
   type InsertUser, type InsertScan, type Scan,
@@ -17,18 +17,13 @@ export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
       const dbUrl = process.env.DATABASE_URL;
-      // Only use SSL for remote/cloud connections (not localhost / 127.0.0.1)
-      const isLocal = /[@/](localhost|127\.0\.0\.1)(:\d+)?[/]/.test(dbUrl);
-      const pool = createPool({
-        uri: dbUrl,
-        ...(isLocal ? {} : {
-          ssl: {
-            minVersion: "TLSv1.2",
-            rejectUnauthorized: true,
-          },
-        }),
+      const client = postgres(dbUrl, {
+        ssl: "require",
+        max: 10,
+        idle_timeout: 20,
+        connect_timeout: 10,
       });
-      _db = drizzle(pool as any);
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -61,12 +56,14 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     else if (user.openId === ENV.ownerOpenId) { values.role = 'admin'; updateSet.role = 'admin'; }
     if (!values.lastSignedIn) values.lastSignedIn = new Date();
     if (Object.keys(updateSet).length === 0) updateSet.lastSignedIn = new Date();
-    await db.insert(users).values(values).onDuplicateKeyUpdate({ set: updateSet });
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.openId,
+      set: updateSet,
+    });
   } catch (error) {
     console.error("[Database] Failed to upsert user:", error);
     throw error;
   }
-
 }
 
 export async function getUserByOpenId(openId: string) {
