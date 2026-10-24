@@ -324,29 +324,47 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
     text: status === "approved" ? "✅ PO Approved!" : "❌ PO Rejected",
   });
 
-  // Edit the message to reflect the final decision
-  const chatId = cq.message?.chat.id;
+  // Edit the original message to remove buttons and show the updated status
+  const chatId = cq.message?.chat?.id;
   const messageId = cq.message?.message_id ?? existing?.messageId;
   const icon = status === "approved" ? "✅" : "❌";
   const label = status === "approved" ? "APPROVED" : "REJECTED";
 
-  await telegramPost("editMessageText", {
-    chat_id: chatId,
-    message_id: messageId,
-    text: [
-      `🌾 *Farm Desk — Purchase Order*`,
-      ``,
-      `*PO Reference:* \`${poId}\``,
-      ``,
-      `${icon} *${label} by Owner*`,
-      `_Decision recorded at ${decidedAt}_`,
-      ``,
-      status === "approved"
-        ? "✅ Draft approved. Contact the supplier to place the order."
-        : "❌ Draft rejected. No order will be placed.",
-    ].join("\n"),
-    parse_mode: "Markdown",
-  });
+  const confirmationText = [
+    `🌾 *Farm Desk — Purchase Order ${label}*`,
+    ``,
+    `*PO Reference:* \`${poId}\``,
+    `${icon} *Status:* ${label} by Owner`,
+    `_Decision recorded at ${decidedAt}_`,
+    ``,
+    status === "approved"
+      ? "✅ Draft approved. The supplier can now be contacted to place the order."
+      : "❌ Draft rejected. No order will be placed.",
+  ].join("\n");
+
+  if (chatId && messageId) {
+    try {
+      await telegramPost("editMessageText", {
+        chat_id: chatId,
+        message_id: messageId,
+        text: confirmationText,
+        parse_mode: "Markdown",
+      });
+    } catch (editErr) {
+      console.warn("[Telegram] Could not edit message, sending new confirmation message instead:", editErr);
+    }
+
+    // Always send a clean new confirmation message directly into the chat so the user immediately sees it
+    try {
+      await telegramPost("sendMessage", {
+        chat_id: chatId,
+        text: confirmationText,
+        parse_mode: "Markdown",
+      });
+    } catch (sendErr) {
+      console.warn("[Telegram] Could not send confirmation message:", sendErr);
+    }
+  }
 
   console.log(`[Telegram] PO ${poId} → ${status} at ${decidedAt}`);
 }
