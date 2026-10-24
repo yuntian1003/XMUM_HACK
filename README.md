@@ -1,339 +1,573 @@
-# 🌾 AgriGuard — Multi-Plant Edge AI Disease Detection
+# AgriGuard
 
-> AI-powered crop disease scanner for ASEAN agriculture. Detect 80+ diseases across 17 crop types — with Edge AI that works completely offline.
+
+> AI-powered crop disease detection and agricultural intelligence for farmers and government agencies in ASEAN.
+
+
+AgriGuard is a full-stack web application built for SDC Hackathon 2026. It combines on-device computer vision, cloud AI diagnosis, agricultural data services, and role-specific dashboards to make crop health information more accessible and actionable.
+
+
+---
+
+
+## Team Information
+
+
+| Field | Details |
+|---|---|
+| **Team Name** | We got no idea |
+| **Team Domain** | Domain 2 |
+| **SDG Track** | SDG 2 - Zero Hunger |
+| **Team Leader** | Tang Yun Tian |
+| **University** | Universiti Sains Malaysia (USM) |
+| **Number of Members** | 5 |
+
+
+## Links
+
+
+| Resource | Link |
+|---|---|
+| **GitHub Repository** | [yuntian1003/XMUM_HACK](https://github.com/yuntian1003/XMUM_HACK) |
+| **Live Demo** | https://xmum-hack.vercel.app/ |
+| **Slide Deck** | https://canva.link/1lmacg413c5nsui |
+| **Demo Video** | Add demo video link |
+
 
 ---
 
-## 📖 Table of Contents
-
-- [Overview](#overview)
-- [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
-- [Prerequisites](#prerequisites)
-- [Getting Started (First-Time Setup)](#getting-started-first-time-setup)
-- [Running the App](#running-the-app)
-- [Troubleshooting](#️-troubleshooting)
-- [Available Scripts](#available-scripts)
-- [Docker](#docker)
-- [License](#license)
-
----
 
 ## Overview
 
-**AgriGuard** is a full-stack web application built for the XMUM Software Development Competition / AI4Sustainability Hackfest. It helps farmers and government agencies detect crop diseases using AI-powered image scanning.
+
+### Problem
+
+
+Crop diseases can spread quickly while farmers may lack immediate access to reliable diagnosis, treatment guidance, market information, and historical records. Government and agricultural stakeholders also need aggregated signals to understand disease risk and food-price conditions across regions.
+
+
+### Solution
+
+
+AgriGuard provides a farmer-facing crop scanning workflow and government-facing agricultural intelligence dashboards in one application. A scan can use TensorFlow.js and MobileNet directly in the browser for an offline-first result, while cloud services provide plant species identification, AI-assisted disease analysis, treatment recommendations, and contextual agricultural information when available.
+
+
+The application is designed with graceful fallbacks: the user interface and basic on-device scanning can continue to work when optional external services or the database are unavailable.
+
 
 ### Key Features
 
-| Feature | Description |
-|---|---|
-| 🔬 **Crop Disease Scanner** | Scan any crop leaf using your phone camera to diagnose diseases |
-| 🧠 **AI Diagnosis** | Google Genkit + Gemini-powered plant disease analysis |
-| 🌐 **Offline-First Edge AI** | TensorFlow.js + MobileNet run on-device — no internet needed for basic scans |
-| 🪴 **PlantNet Integration** | Species identification powered by the Pl@ntNet API |
-| 📊 **Government Dashboard** | Aggregated disease analytics, food price monitoring, risk indices, and news |
-| 👩‍🌾 **Farmer Hub** | Personalised portal for farmers with scan history and treatment recommendations |
-| 🌾 **Farm Desk Demo** | Synthetic paddy-farm workflow for photo screening, manager treatment review, stock and fertiliser tracking, owner PO approval, WhatsApp order drafts, and an activity log |
-| 💬 **AI Assistant Chat** | Dashboard copilot that answers questions about live agricultural data |
-| 📈 **Food Price Monitoring** | Real-time commodity prices, FX rates, fuel costs, and World Bank data |
 
-> The Farm Desk demo is available at `/farm-desk`. It uses synthetic data and simulated roles/local activity records; it does not place orders or provide authoritative treatment instructions.
+- **Crop Disease Scanner** - Scan a crop leaf with a phone camera and receive a disease assessment.
+- **Offline-First Edge AI** - TensorFlow.js and MobileNet run in the browser, allowing basic scans without an internet connection.
+- **AI Diagnosis** - Google Genkit with Gemini provides AI-assisted plant disease analysis.
+- **Plant Species Identification** - Pl@ntNet identifies plant species through its plant-health API.
+- **Treatment Recommendations** - Disease results are connected to crop treatment guidance.
+- **Farmer Hub** - Farmers can view scan history, results, and personalised recommendations.
+- **Government Dashboard** - Aggregated disease analytics, risk indices, food prices, foreign-exchange rates, fuel costs, and agricultural news.
+- **AI Assistant Chat** - A dashboard copilot answers questions about available agricultural data.
+- **Vertex AI Search** - Retrieval-augmented context can be provided through Google Vertex AI Search.
+- **Farm Desk Demo** - A synthetic paddy-farm workflow demonstrates photo screening, manager treatment review, stock and fertiliser tracking, owner purchase-order approval, WhatsApp order drafts, and an activity log.
+
+
+> The Farm Desk demo is available at `/farm-desk`. It uses synthetic data and simulated roles and local activity records. It does not place orders or provide authoritative treatment instructions.
+
 
 ---
+
 
 ## Tech Stack
 
-### Frontend
 
-- **React 19** with TypeScript
-- **Vite 7** (dev server + build)
-- **Tailwind CSS 4** for styling
-- **wouter** for client-side routing
-- **tRPC + React Query** for type-safe API calls
-- **Framer Motion** for animations
-- **Recharts** for data visualisation
-- **Radix UI** (shadcn/ui) component library
-- **TensorFlow.js + MobileNet** for on-device Edge AI
+| Layer | Technology |
+|---|---|
+| **Frontend** | React 19, TypeScript, Vite 7 |
+| **UI** | Tailwind CSS 4, Radix UI / shadcn/ui, Framer Motion |
+| **Client data** | tRPC, TanStack React Query, wouter |
+| **Edge AI** | TensorFlow.js, MobileNet |
+| **Backend** | Node.js, Express, tRPC |
+| **Database** | Supabase PostgreSQL with Drizzle ORM and SQL migrations |
+| **AI diagnosis** | Google Genkit, Gemini, optional Groq model support |
+| **Plant identification** | Pl@ntNet API |
+| **Agricultural retrieval** | Google Vertex AI Search |
+| **Image storage** | AWS S3 |
+| **Testing** | Vitest |
+| **Deployment** | Vercel for the deployed web application; Docker-supported production server |
 
-### Backend
-
-- **Node.js + Express** server
-- **tRPC** for type-safe API layer
-- **Drizzle ORM** with **MySQL** database
-- **Google Genkit + Gemini** for AI diagnosis flows
-- **Pl@ntNet API** for plant species identification
-- **Google Vertex AI Search** for RAG-based context retrieval
-- **AWS S3** for image storage
-
-### Tooling
-
-- **pnpm** (recommended) or **npm** as package manager
-- **TypeScript 5.9**
-- **Vitest** for testing
-- **Prettier** for formatting
-- **Docker** for containerised deployment
-- **esbuild** for backend bundling
 
 ---
+
 
 ## Project Structure
 
-```
+
+This repository is a full-stack monorepo. The top-level `src/` directory follows the submission template for the Python application, while the React frontend and Node backend remain separated so that their existing build and deployment configuration is preserved.
+
+
+```text
 XMUM_HACK/
-├── frontend/                 # React + Vite frontend
+├── frontend/                        # React + Vite web application
 │   ├── src/
-│   │   ├── pages/            # Route pages (Home, Scan, Result, Dashboard, etc.)
-│   │   ├── components/       # Reusable UI components (shadcn/ui based)
-│   │   ├── contexts/         # React context providers (Theme, Auth)
-│   │   ├── hooks/            # Custom React hooks
-│   │   ├── lib/              # Utility functions and tRPC client
-│   │   ├── _core/            # Core frontend infrastructure
-│   │   ├── App.tsx           # Root app component with routing
-│   │   └── main.tsx          # Entry point
-│   ├── public/               # Static assets
-│   └── vite.config.ts        # Vite configuration
+│   │   ├── pages/                   # Home, scan, result, dashboard, and other routes
+│   │   ├── components/              # Reusable UI and shadcn/ui components
+│   │   ├── contexts/                # Theme and authentication contexts
+│   │   ├── hooks/                   # Reusable React hooks
+│   │   ├── lib/                     # tRPC client and frontend utilities
+│   │   ├── _core/                   # Core frontend infrastructure
+│   │   ├── const.ts                 # Shared frontend constants
+│   │   ├── index.css                # Global styles
+│   │   ├── App.tsx                  # Root component and client routing
+│   │   └── main.tsx                 # Frontend entry point
+│   ├── public/                      # Static frontend assets
+│   ├── index.html                   # HTML entry point
+│   └── vite.config.ts               # Vite aliases, proxy, and production output
 │
-├── backend/                  # Express + tRPC backend
-│   ├── _core/                # Server core (Express setup, env, auth, tRPC, Vite SSR)
-│   │   ├── index.ts          # Server entry point
-│   │   ├── env.ts            # Environment variable definitions
-│   │   ├── envPreload.ts     # Dotenv loader (runs before ESM imports)
-│   │   ├── trpc.ts           # tRPC router + procedure definitions
-│   │   ├── sdk.ts            # Backend SDK utilities
-│   │   ├── llm.ts            # LLM integration helpers
-│   │   └── ...
-│   ├── drizzle/              # Database schema + migrations
-│   │   ├── schema.ts         # Drizzle ORM table definitions
-│   │   └── *.sql             # SQL migration files
-│   ├── genkit/               # Google Genkit AI flows
-│   │   └── plantDiagnosis.ts # Plant disease diagnosis AI flow
-│   ├── integrations/         # External service integrations
-│   │   └── foodmonitor/      # Food monitor data service
-│   ├── routers.ts            # All tRPC route handlers
-│   ├── db.ts                 # Database query functions
-│   ├── plantnetService.ts    # Pl@ntNet species ID service
-│   ├── cropTreatments.ts     # Treatment recommendation logic
-│   ├── assistantChat.ts      # AI assistant chat handler
-│   └── drizzle.config.ts     # Drizzle Kit config
+├── backend/                         # Express + tRPC backend
+│   ├── _core/                       # Server, auth, env, LLM, tRPC, and Vite integration
+│   │   ├── index.ts                 # Server entry point
+│   │   ├── env.ts                   # Environment variable definitions
+│   │   ├── envPreload.ts            # Dotenv loader (runs before ESM imports)
+│   │   ├── trpc.ts                  # tRPC router and procedure definitions
+│   │   ├── sdk.ts                   # Backend SDK utilities
+│   │   ├── llm.ts                   # LLM integration helpers
+│   │   ├── localAuthStore.ts        # Local authentication store
+│   │   ├── voiceTranscription.ts    # Voice transcription integration
+│   │   ├── imageGeneration.ts       # Image generation integration
+│   │   ├── map.ts                   # Map data utilities
+│   │   ├── notification.ts          # Notification helpers
+│   │   ├── systemRouter.ts          # System-level tRPC routes
+│   │   └── vite.ts                  # Vite dev middleware integration
+│   ├── drizzle/                     # Drizzle ORM schema and SQL migrations
+│   │   ├── schema.ts                # Table definitions
+│   │   ├── relations.ts             # Drizzle relation definitions
+│   │   ├── migrations/              # Applied migration snapshots
+│   │   ├── meta/                    # Drizzle migration metadata
+│   │   └── *.sql                    # SQL migration files
+│   ├── genkit/                      # Google Genkit AI flows
+│   ├── integrations/
+│   │   └── foodmonitor/             # Food Monitor data service client
+│   ├── shared/                      # Types and constants shared across backend
+│   ├── routers.ts                   # All tRPC route handlers
+│   ├── db.ts                        # Database query functions
+│   ├── plantnetService.ts           # Pl@ntNet species identification
+│   ├── cropTreatments.ts            # Treatment recommendation logic
+│   ├── assistantChat.ts             # Agricultural AI assistant chat handler
+│   ├── storage.ts                   # AWS S3 image storage helpers
+│   ├── telegram.ts                  # Telegram bot integration
+│   ├── vertexAiSearch.ts            # Vertex AI Search retrieval
+│   └── drizzle.config.ts            # Drizzle Kit configuration
 │
-├── scripts/                  # Utility scripts (seeding, data export)
-├── runpod/                   # RunPod serverless handler (Python)
-├── dashboards/               # Dashboard design assets
-├── tests/                    # Test files
-├── patches/                  # pnpm patch overrides
+├── tests/                           # Automated test suite
+│   ├── auth.logout.test.ts
+│   ├── backendSignals.test.ts
+│   ├── cropTreatments.test.ts
+│   ├── foodmonitor.client.test.ts
+│   ├── foodmonitor.router.test.ts
+│   ├── leafValidator.test.ts
+│   ├── scans.test.ts
+│   └── test_utils.py
 │
-├── package.json              # Root package.json (monorepo)
-├── tsconfig.json             # Shared TypeScript config
-├── vitest.config.ts          # Vitest test runner config
-├── Dockerfile                # Production Docker build
-├── .env                      # Environment variables (create this — not in git)
-└── .gitignore
+├── submission/                      # Hackathon submission documents (PDFs)
+├── scripts/
+│   └── utils/                       # Data seeding and utility scripts
+├── patches/
+│   └── wouter@3.7.1.patch           # Patch override for wouter
+├── package.json                     # Root scripts and dependencies
+├── frontend/package.json            # Frontend package configuration
+├── backend/package.json             # Backend package configuration
+├── components.json                  # shadcn/ui component configuration
+├── tsconfig.json                    # Shared TypeScript configuration
+├── vitest.config.ts                 # Vitest configuration
+├── Dockerfile                       # Container build configuration
+├── docker-compose.yml               # Docker Compose configuration
+├── requirements.txt                 # Python dependencies
+├── .env.example                     # Environment variable template (no real secrets)
+└── README.md                        # Project and submission documentation
 ```
 
+
+### Architecture
+
+
+```text
+User
+ ├──► React + Vite frontend
+ │       ├──► TensorFlow.js + MobileNet (offline-first scan)
+ │       └──► Express + tRPC API
+ │               ├──► Supabase PostgreSQL via Drizzle ORM
+ │               ├──► Genkit + Gemini / Groq
+ │               ├──► Pl@ntNet
+ │               ├──► Vertex AI Search
+ │               ├──► Food Monitor services
+ │               └──► AWS S3
+ └──► Vercel deployment
+
+RunPod serverless handler
+ └──► Optional GPU/model workload integration
+```
+
+
+The deployed web application uses the existing frontend/backend structure. The `frontend/src/` directory is intentionally not moved into the top-level Python `src/` directory because those directories serve different runtimes and build systems.
+
+
 ---
 
-## Prerequisites
 
-Make sure you have the following installed:
+## How to Run
 
-| Tool | Required Version | Notes |
+
+### Prerequisites
+
+
+| Tool | Required version | Notes |
 |---|---|---|
-| **Node.js** | v20 or later | Check with `node -v` ([Download](https://nodejs.org/)) |
-| **npm** | v10+ | Bundled with Node.js |
-| **pnpm** *(recommended)* | v10+ | Run directly via `npx pnpm` (no global install needed) |
-| **MySQL** *(optional for basic run)* | 8.0+ | Needed for saving scans and analytics data |
+| **Node.js** | v20 or later | [Download Node.js](https://nodejs.org/) |
+| **npm** | v10 or later | Bundled with Node.js |
+| **pnpm** | v10 or later | Recommended; can be run through `npx pnpm` |
+| **Supabase** | PostgreSQL project | Required for persistent accounts, scans, and analytics |
 
-> [!TIP]
-> The project uses `pnpm` workspaces with a custom patch for `wouter`. Using `npx pnpm` ensures all workspace links and native binaries (`@tailwindcss/oxide`, `esbuild`) are set up properly.
-
----
-
-## Getting Started (First-Time Setup)
 
 ### 1. Clone the repository
+
 
 ```bash
 git clone https://github.com/yuntian1003/XMUM_HACK.git
 cd XMUM_HACK
 ```
 
+
 ### 2. Install dependencies
 
-Run with `npx pnpm` (recommended):
+
+The recommended package manager is pnpm:
+
 
 ```bash
 npx pnpm install
 ```
 
-*(Or `npm install`)*
 
-> This installs and links all dependencies for both the root, frontend, and backend packages.
+`npm install` is also supported. The install links dependencies for the root, frontend, and backend packages.
 
-### 3. Set up environment variables
 
-Copy the included `.env.example` to create your `.env` file:
+### 3. Configure environment variables
+
+
+Create a local environment file from the included template:
+
+
+```powershell
+# Windows PowerShell
+Copy-Item .env.example .env
+```
+
 
 ```bash
-# On Windows (PowerShell):
-Copy-Item .env.example .env
-
-# On Mac / Linux / Git Bash:
+# macOS, Linux, or Git Bash
 cp .env.example .env
 ```
 
-> [!NOTE]
-> The app is built with graceful fallbacks. It will run and load the UI even before you configure external APIs or a database!
 
-### 4. Set up the database (Optional for first run)
+Add only the credentials and service settings required for the features being tested. Never commit `.env` or API keys.
 
-If you have a local or cloud MySQL server:
-1. Create a database:
-   ```sql
-   CREATE DATABASE farmgpt;
-   ```
-2. Put the connection string into `.env`:
-   ```env
-   DATABASE_URL=mysql://root:your_password@localhost:3306/farmgpt
-   ```
-3. Push the schema to your database:
-   ```bash
-   npm run db:push
-   ```
 
----
+Common settings include:
 
-## Running the App
 
-Choose whichever method fits your workflow best:
+```env
+DATABASE_URL=postgresql://postgres.[PROJECT-REF]:[PASSWORD]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+JWT_SECRET=replace-with-a-local-secret
+GEMINI_API_KEY=your-key
+PLANTNET_API_KEY=your-key
+GROQ_API_KEY=your-key
+VITE_API_BASE_URL=
+BUILT_IN_FORGE_API_URL=
+BUILT_IN_FORGE_API_KEY=
+```
 
-### 🌟 Method 1: Single-Command Full-Stack (Easiest)
 
-Runs the Express + tRPC backend and Vite frontend together in one command:
+Additional optional settings support Vertex AI Search, Food Monitor, Telegram notifications, S3 storage, OAuth, and RunPod integration. See the backend environment configuration and `.env.example` for the complete list.
+
+
+### 4. Configure Supabase PostgreSQL
+
+
+The application uses Supabase PostgreSQL as its persistent database. Set `DATABASE_URL` to the Supabase connection-pooler URL, then apply the Drizzle schema and migrations:
+
+
+```bash
+npm run db:push
+```
+
+
+The database stores local-auth accounts in the `local_auth_users` table, as well as application users, scans, dashboards, and other agricultural data. The application can still load its UI and use fallback behavior without a database connection, but new account registration requires a working database.
+
+
+### 5. Authentication and seeded demo accounts
+
+
+Authentication uses PBKDF2 password hashes and salts stored in the persistent `local_auth_users` PostgreSQL table. Passwords are never stored in plain text. After login or signup, the server issues an HTTP-only session cookie.
+
+
+The backend also contains a small set of pre-seeded demonstration accounts for offline development or presentation fallback when the database is unavailable. These accounts are not a replacement for persistent production storage. Never add real passwords or API keys to the repository.
+
+
+### 6. Run the application
+
+
+#### Full-stack development
+
 
 ```bash
 npm run dev
 ```
 
-Open your browser and navigate to:
-👉 **[http://localhost:3000](http://localhost:3000)**
 
----
+Open [http://localhost:3000](http://localhost:3000).
 
-### ⚡ Method 2: Dual-Terminal Development (Fastest Frontend HMR)
 
-If you are actively modifying frontend UI components, you can run the backend and Vite dev server independently in two terminals:
+#### Separate frontend and backend
 
-**Terminal 1 — Backend (tRPC & Express API):**
+
+Terminal 1:
+
+
 ```bash
 npm run dev:backend
 ```
-*(Runs on port 3000)*
 
-**Terminal 2 — Frontend (Vite Dev Server):**
+
+Terminal 2:
+
+
 ```bash
 npm run dev:frontend
 ```
-*(Runs on port 5173 and automatically proxies `/api` requests to port 3000)*
 
-Open your browser at:
-👉 **[http://localhost:5173](http://localhost:5173)**
 
----
+Open [http://localhost:5173](http://localhost:5173). The Vite development server proxies `/api` requests to the backend.
 
-### 📦 Method 3: Production Build & Start
 
-To build optimized production bundles and test the production server:
+#### Production build
+
 
 ```bash
-# 1. Build frontend and backend
 npm run build
-
-# 2. Start the production server
 npm run start
 ```
 
-Access the production server at **http://localhost:3000**.
 
----
+The production server is available at [http://localhost:3000](http://localhost:3000).
 
-### 🧪 Method 4: Genkit AI Developer UI
 
-To interactively test and debug Gemini / Genkit plant diagnosis prompts:
+#### Genkit developer UI
+
+
+To inspect and debug Gemini / Genkit plant-diagnosis prompts:
+
 
 ```bash
 npm run dev:genkit
 ```
 
+
 ---
 
-## 🛠️ Troubleshooting
 
-### 1. `'tsc'` or `'tsx'` is not recognized
-This occurs when binary symlinks inside `node_modules/.bin` are missing or were corrupted.  
-**Fix:** Run:
+## Deployment
+
+
+### Vercel
+
+
+The live web application is deployed on Vercel. Production configuration must continue to use the repository's existing frontend/backend build arrangement. Validate changes in a Vercel Preview Deployment before merging them into production.
+
+
+Do not move `frontend/src/` into the top-level `src/` directory: the top-level directory is reserved for the Python application from the submission template, while Vite is configured to build from `frontend/`.
+
+
+Configure production secrets through Vercel Environment Variables. Do not commit credentials or copy production secrets into `.env`.
+
+
+### Docker
+
+
+The repository also includes a production Dockerfile:
+
+
+```bash
+docker build -t agriguard .
+docker run -p 8080:8080 `
+  -e DATABASE_URL="postgresql://..." `
+  -e JWT_SECRET="..." `
+  -e NODE_ENV=production `
+  agriguard
+```
+
+
+The container listens on port `8080`.
+
+
+---
+
+
+## Available Scripts
+
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the backend development server (alias for `dev:backend`) |
+| `npm run dev:backend` | Start the backend with hot reload |
+| `npm run dev:frontend` | Start the Vite frontend on port 5173 |
+| `npm run dev:genkit` | Launch the Genkit developer UI |
+| `npm run build` | Build the frontend and backend production bundles |
+| `npm run start` | Start the production Node server |
+| `npm run check` | Type-check the TypeScript codebase |
+| `npm run test` | Run Vitest tests |
+| `npm run db:push` | Generate and apply Drizzle database migrations |
+| `npm run format` | Format the codebase with Prettier |
+
+
+---
+
+
+## Testing
+
+
+Run the automated TypeScript test suite:
+
+
+```bash
+npm run test
+```
+
+
+Run the TypeScript type check:
+
+
+```bash
+npm run check
+```
+
+
+The repository includes tests for authentication, crop treatments, plant validation, scans, Food Monitor integrations, and backend routers.
+
+
+---
+
+
+## Troubleshooting
+
+
+### `tsc` or `tsx` is not recognized
+
+
+Reinstall dependencies so the local binaries are restored:
+
+
 ```bash
 npx pnpm install
 ```
 
-### 2. Port 3000 or 5173 already in use
-The backend has built-in port auto-detection and will automatically attempt to bind to `3001`, `3002`, etc., if port 3000 is occupied.
-To check what is using port 3000 or 5173 on Windows:
+
+### Port 3000 or 5173 is already in use
+
+
+On Windows PowerShell, find the process using either port:
+
+
 ```powershell
-Get-NetTCPConnection -LocalPort 3000, 5173 -ErrorAction SilentlyContinue | Select-Object LocalAddress, LocalPort, OwningProcess, State
+Get-NetTCPConnection -LocalPort 3000,5173 -ErrorAction SilentlyContinue |
+  Select-Object LocalAddress,LocalPort,OwningProcess,State
 ```
-To kill a hanging process by its PID:
+
+
+Stop a specific process by PID when appropriate:
+
+
 ```powershell
 Stop-Process -Id <PID> -Force
 ```
 
-### 3. Database connection warnings
-If you see `[Database] Cannot upsert user: database not available`, don't worry! The application is designed with offline-first fallbacks and will continue running. To enable persistent history and analytics, configure `DATABASE_URL` in your `.env` and run `npm run db:push`.
+
+### Database connection warnings
+
+
+Warnings such as `[Database] Cannot upsert user: database not available` indicate that Supabase PostgreSQL is not reachable. The application can use fallback data and seeded demonstration accounts, but persistent account registration, scan history, and analytics require a valid `DATABASE_URL`. Confirm the Supabase connection-pooler URL, then run `npm run db:push`.
+
+
+### Authentication account not found
+
+
+Accounts created in one environment are stored in that environment's PostgreSQL database. They are not stored in Git and are not shared with a different Supabase project. Confirm that local development, Vercel Preview, and Vercel Production use the intended database connection and that the `local_auth_users` migration has been applied.
+
 
 ---
 
-## Available Scripts
 
-| Script | Command | Description |
+## Challenges and Learnings
+
+
+- Combining an offline-first browser model with optional cloud diagnosis required explicit fallback behavior so scanning remains useful when services are unavailable.
+- Keeping farmer workflows, government analytics, and synthetic Farm Desk operations in one product required clear separation of real data, simulated data, and role-specific experiences.
+- Integrating multiple AI and data services required environment-based configuration and safe handling of unavailable providers.
+- Maintaining a separate React frontend, Node backend, Python submission-template app, and RunPod handler required preserving clear runtime boundaries rather than flattening every source file into one directory.
+
+
+## Future Improvements
+
+
+- Improve model accuracy with a larger, locally validated crop-disease dataset.
+- Add multilingual guidance and voice interaction for farmers.
+- Expand regional crop, weather, disease-risk, and market data coverage.
+- Add stronger evaluation and monitoring for AI-generated diagnosis and treatment suggestions.
+- Connect Farm Desk workflows to verified inventory, purchasing, and notification systems.
+- Add production observability, role administration, and more comprehensive end-to-end tests.
+
+
+---
+
+
+## Team
+
+
+| Name | Role | GitHub |
 |---|---|---|
-| `npm run dev` | `npm run dev:backend` | Start full-stack development server on port 3000 |
-| `npm run dev:backend` | `npm --prefix backend run dev` | Start backend with hot reload (tsx watch) |
-| `npm run dev:frontend` | `npm --prefix frontend run dev` | Start frontend Vite dev server on port 5173 |
-| `npm run dev:genkit` | `genkit-cli start ...` | Launch the Genkit Developer UI |
-| `npm run build` | `build:frontend && build:backend` | Build production bundles for frontend & backend |
-| `npm run start` | `cross-env NODE_ENV=production node dist/index.js` | Run production server |
-| `npm run check` | `tsc --noEmit` | Type-check TypeScript codebase without emitting files |
-| `npm run test` | `vitest run` | Run automated unit and integration tests |
-| `npm run db:push` | `drizzle-kit generate && migrate` | Sync schema migrations to MySQL database |
-| `npm run format` | `prettier --write .` | Format codebase with Prettier |
+| Tang Yun Tian | Team Leader | [@yuntian1003](https://github.com/yuntian1003) |
+| Lim Pei Xuan | Frontend and demo | [@Limpx888](https://github.com/Limpx888) |
+| Cheong Wen Xuan | Backend and workflow | [@imxuannnn](https://github.com/imxuannnn) |
+| Angela Lim Min Qing | AI and evaluation | [@Angelalim930](https://github.com/Angelalim930) |
+| Doris Yee Wai Lee | Data, deployment and documentation | [@dorishark](https://github.com/dorishark) |
+
+
+## Submission Checklist
+
+
+- [x] Team name, domain, and SDG track filled in
+- [x] Team and university information completed
+- [x] GitHub repository link added
+- [x] Vercel live-demo link added
+- [x] Slide deck link added
+- [ ] Demo video link added
+- [x] Required preliminary submission completed
+- [x] Technology declaration completed
+- [x] Proof-of-use documents added to `submission/` if required
+- [x] How-to-run steps verified
+- [x] No API keys, passwords, or production secrets committed
+
 
 ---
 
-## Docker
-
-Build and run in a container:
-
-```bash
-# Build the image
-docker build -t farmgpt .
-
-# Run the container
-docker run -p 8080:8080 \
-  -e DATABASE_URL="mysql://..." \
-  -e JWT_SECRET="..." \
-  -e NODE_ENV=production \
-  farmgpt
-```
-
-The app will be available at **http://localhost:8080**.
-
----
 
 ## License
 
-MIT
 
----
+This project is licensed under the [MIT License](LICENSE).
+
 
 <p align="center">
-  Built with 💚 by <strong>Team XMUM SDC</strong>
+  Built with care by <strong>Team XMUM SDC</strong>
 </p>
+
+
+
