@@ -277,18 +277,26 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
       // Keep the code in the map so it can be re-used (it's permanent)
       console.log(`[Telegram] User "${entry.userId}" linked → chat_id ${chatId} (@${update.message.from?.username ?? "unknown"})`);
 
-      await telegramPost("sendMessage", {
-        chat_id: chatId,
-        text: [
-          `🌾 *Farm Desk — Telegram Linked Successfully!*`,
-          ``,
-          `Hi ${senderName}! Your Telegram is now linked as the *Farm Owner* for this account.`,
-          ``,
-          `You will receive Purchase Order drafts here for approval.`,
-          `Tap ✅ *Approve PO* or ❌ *Reject PO* on each message.`,
-        ].join("\n"),
-        parse_mode: "Markdown",
-      });
+      try {
+        await telegramPost("sendMessage", {
+          chat_id: chatId,
+          text: [
+            `🌾 *Farm Desk — Telegram Linked Successfully!*`,
+            ``,
+            `Hi ${senderName}! Your Telegram is now linked as the *Farm Owner* for this account.`,
+            ``,
+            `You will receive Purchase Order drafts here for approval.`,
+            `Tap ✅ *Approve PO* or ❌ *Reject PO* on each message.`,
+          ].join("\n"),
+          parse_mode: "Markdown",
+        });
+      } catch (sendErr) {
+        console.warn("[Telegram] /link Markdown reply failed, trying plain text fallback:", sendErr);
+        await telegramPost("sendMessage", {
+          chat_id: chatId,
+          text: `🌾 Farm Desk — Telegram Linked Successfully!\n\nHi ${senderName}! Your Telegram is now linked as the Farm Owner for this account.\n\nYou will receive Purchase Order drafts here for approval.\nTap ✅ Approve PO or ❌ Reject PO on each message.`,
+        }).catch((e) => console.error("[Telegram] Plain text /link reply also failed:", e));
+      }
       return;
     }
   }
@@ -351,18 +359,7 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
         parse_mode: "Markdown",
       });
     } catch (editErr) {
-      console.warn("[Telegram] Could not edit message, sending new confirmation message instead:", editErr);
-    }
-
-    // Always send a clean new confirmation message directly into the chat so the user immediately sees it
-    try {
-      await telegramPost("sendMessage", {
-        chat_id: chatId,
-        text: confirmationText,
-        parse_mode: "Markdown",
-      });
-    } catch (sendErr) {
-      console.warn("[Telegram] Could not send confirmation message:", sendErr);
+      console.warn("[Telegram] editMessageText failed:", editErr);
     }
   }
 
