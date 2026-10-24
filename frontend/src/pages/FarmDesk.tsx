@@ -73,7 +73,7 @@ type DeskState = {
 };
 
 const STORAGE_KEY = "farm-desk-demo-v1";
-const PO_ID_KEY   = "farm-desk-pending-po-v1"; // persists the active PO ID across reloads
+const PO_ID_KEY = "farm-desk-pending-po-v1"; // persists the active PO ID across reloads
 
 /** Read any in-flight PO ID from localStorage (null if none). */
 function readSavedPoId(): string | null {
@@ -211,13 +211,13 @@ export default function FarmDesk() {
   const [telegramPoId, setTelegramPoId] = useState<string | null>(() => {
     // Restore if there is a persisted PO ID and the desk still shows it as pending
     const savedPoId = readSavedPoId();
-    const savedDesk  = readSavedState();
+    const savedDesk = readSavedState();
     if (savedPoId && savedDesk.orderStatus === "pending") return savedPoId;
     return null;
   });
   const [telegramStatus, setTelegramStatus] = useState<"idle" | "sending" | "sent" | "approved" | "rejected">(() => {
     const savedPoId = readSavedPoId();
-    const savedDesk  = readSavedState();
+    const savedDesk = readSavedState();
     if (savedPoId && savedDesk.orderStatus === "pending") return "sent";
     return "idle";
   });
@@ -1063,7 +1063,7 @@ export default function FarmDesk() {
                       /* ── Code shown, waiting for user to send /link ── */
                       <div className="space-y-3">
                         <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 space-y-2">
-                          <p className="text-sm font-semibold text-sky-900">Step 1 — Open <strong>@AgriGuard_Farm_bot</strong> on Telegram</p>
+                          <p className="text-sm font-semibold text-sky-900">Step 1 — Open <strong>@agrifarmdesk_bot</strong> on Telegram</p>
                           <p className="text-sm font-semibold text-sky-900">Step 2 — Send this command:</p>
                           <div className="flex items-center gap-2">
                             <code className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-lg font-bold tracking-widest text-emerald-300 text-center">
@@ -1094,7 +1094,7 @@ export default function FarmDesk() {
                       /* ── Not yet linked ── */
                       <div className="space-y-3">
                         <p className="text-sm text-slate-600">
-                          Generate your personal link code, then send it to <strong>@AgriGuard_Farm_bot</strong> on Telegram.
+                          Generate your personal link code, then send it to <strong>@agrifarmdesk_bot</strong> on Telegram.
                           Your code is always the same — <em>one account, one code</em>.
                         </p>
                         <Button

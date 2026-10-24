@@ -8,7 +8,7 @@
  * Multi-owner linking flow:
  *  1. Farm owner opens Farm Desk → switches to "Owner" role.
  *  2. Clicks "Link My Telegram" → backend generates a 6-char one-time code.
- *  3. UI shows: send `/link ABC123` to @AgriGuard_Farm_bot
+ *  3. UI shows: send `/link ABC123` to @agrifarmdesk_bot
  *  4. Owner sends that on Telegram → poller records their chatId for that farmId.
  *  5. Future POs for that farmId are sent only to their linked Telegram.
  *
