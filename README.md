@@ -31,7 +31,7 @@ AgriGuard is a full-stack web application built for SDC Hackathon 2026. It combi
 | **GitHub Repository** | [yuntian1003/XMUM_HACK](https://github.com/yuntian1003/XMUM_HACK) |
 | **Live Demo** | https://xmum-hack.vercel.app/ |
 | **Slide Deck** | https://canva.link/1lmacg413c5nsui |
-| **Demo Video** | Add demo video link |
+| **Demo Video** | https://www.youtube.com/watch?v=uaWq6kP3gx8 |
 
 
 ---
@@ -548,7 +548,7 @@ Accounts created in one environment are stored in that environment's PostgreSQL 
 - [x] GitHub repository link added
 - [x] Vercel live-demo link added
 - [x] Slide deck link added
-- [ ] Demo video link added
+- [x] Demo video link added
 - [x] Required preliminary submission completed
 - [x] Technology declaration completed
 - [x] Proof-of-use documents added to `submission/` if required
