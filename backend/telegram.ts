@@ -242,7 +242,23 @@ async function processUpdate(update: TelegramUpdate): Promise<void> {
       const code = match[1].toUpperCase();
       const chatId = update.message.chat.id;
       const senderName = update.message.from?.first_name ?? "Owner";
-      const entry = linkCodes.get(code);
+      let entry = linkCodes.get(code);
+
+      // If not in in-memory map yet (e.g. newly registered user or server restart), look up dynamically:
+      if (!entry) {
+        try {
+          const allUsers = await getAllLocalAuthUsers();
+          for (const u of allUsers) {
+            const userCode = hashUserId(u.openId);
+            linkCodes.set(userCode, { userId: u.openId, expiresAt: Infinity });
+            if (userCode === code) {
+              entry = { userId: u.openId, expiresAt: Infinity };
+            }
+          }
+        } catch (dbErr) {
+          console.warn("[Telegram] Error fetching users during /link check:", dbErr);
+        }
+      }
 
       if (!entry) {
         await telegramPost("sendMessage", {
